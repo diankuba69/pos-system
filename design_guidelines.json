@@ -1,0 +1,141 @@
+{
+  "project_name": "Kasir/POS Fullstack Application",
+  "theme": "light",
+  "typography": {
+    "primary_heading_font": "Manrope",
+    "body_data_font": "IBM Plex Sans",
+    "hierarchy": {
+      "h1": "text-4xl tracking-tight font-extrabold text-zinc-900",
+      "h2": "text-2xl tracking-tight font-bold text-zinc-900",
+      "h3": "text-xl font-semibold text-zinc-800",
+      "body": "text-base font-normal text-zinc-700",
+      "labels_small": "text-sm uppercase tracking-[0.2em] font-semibold text-zinc-500"
+    },
+    "technical_rules": [
+      "No generic Inter/Roboto for headings.",
+      "Use tabular-nums class for all prices and quantities.",
+      "Left-align tabular data unless specific metric requires right-alignment."
+    ]
+  },
+  "colors": {
+    "archetype": "SWISS & HIGH-CONTRAST",
+    "palette": {
+      "background": "#F4F4F5",
+      "surface": "#FFFFFF",
+      "primary": "#4F46E5",
+      "primary_hover": "#4338CA",
+      "checkout_action": "#16A34A",
+      "danger": "#EF4444",
+      "text_main": "#18181B",
+      "text_muted": "#71717A",
+      "border": "#E4E4E7"
+    },
+    "rules": [
+      "Never use pure black or pure white; tint neutrals.",
+      "Use #16A34A (Green) specifically for the final 'Bayar' button.",
+      "Use 1px borders instead of soft shadows for structural containers."
+    ]
+  },
+  "layouts": {
+    "global_app_layout": "h-screen flex overflow-hidden bg-zinc-50",
+    "pos_checkout": {
+      "container": "grid grid-cols-1 lg:grid-cols-12 h-full w-full",
+      "product_area": "lg:col-span-8 flex flex-col h-full bg-zinc-50 p-6 overflow-y-auto",
+      "cart_panel": "lg:col-span-4 h-full bg-white border-l border-zinc-200 flex flex-col shadow-[-4px_0_24px_rgba(0,0,0,0.02)]"
+    },
+    "dashboard_reports": "Dense Grid: grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4 p-8",
+    "spacing_strategy": "Generous inside containers (p-6, p-8) to prevent text collision, tight gap (gap-4) between data widgets."
+  },
+  "visual_enhancers": {
+    "surfaces": "Grid Borders (Technical Look). Expose the skeleton for the POS grid.",
+    "borders": "1px solid border-zinc-200 on cards instead of heavy drop shadows.",
+    "hover_states": "Crisp transformations: -translate-y-1 with subtle shadow-md and explicit text color change.",
+    "modals": "Solid backgrounds (bg-white) with 1px border. NO Glassmorphism for POS."
+  },
+  "components": {
+    "buttons": "Pill-shaped or slightly rounded (rounded-md). High contrast text.",
+    "cards": "Cardless, flat, rectangular, dense styles. max 8px border-radius.",
+    "forms": "Shadcn UI base heavily customized. No native inputs. Stack fields vertically.",
+    "data_tables": "Shadcn UI Tables for Inventory/Suppliers. Dense rows, distinct headers."
+  },
+  "grids": {
+    "product_grid": "grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4 items-stretch",
+    "category_tabs": "Flex row, gap-2, overflow-x-auto no-scrollbar"
+  },
+  "motion": {
+    "interactions": "Micro-animations on hover/click (scale 0.98 on tap).",
+    "transitions": "Use specific properties: transition-transform duration-200 ease-out. NO transition-all.",
+    "lists": "Staggered entrance for product grid items."
+  },
+  "accessibility": {
+    "contrast": "Ensure min 4.5:1 ratio for standard text.",
+    "focus": "High contrast focus rings: focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2",
+    "testing": "All interactive elements MUST include data-testid."
+  },
+  "media": {
+    "image_constraints": "Product images must have explicit aspect ratios (aspect-square) with object-cover.",
+    "icons": "Phosphor Icons (@phosphor-icons/react)"
+  },
+  "3d_libraries": {
+    "usage": "NOT RECOMMENDED for this POS. Focus on 2D speed and clarity."
+  },
+  "image_urls": {
+    "products": [
+      {
+        "url": "https://images.unsplash.com/photo-1550731358-491ded4af838?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDQ2NDF8MHwxfHNlYXJjaHwzfHxjb2ZmZWUlMjBjdXAlMjBsYXR0ZSUyMGFydHxlbnwwfHx8fDE3ODU2MDgzODN8MA&ixlib=rb-4.1.0&q=85",
+        "description": "Coffee Cup",
+        "category": "Beverage"
+      },
+      {
+        "url": "https://images.unsplash.com/photo-1691480162735-9b91238080f6?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjAzNDR8MHwxfHNlYXJjaHwxfHxjcm9pc3NhbnQlMjBwYXN0cnklMjB3aGl0ZSUyMGJhY2tncm91bmR8ZW58MHx8fHwxNzg1NjA4Mzg0fDA&ixlib=rb-4.1.0&q=85",
+        "description": "Croissant",
+        "category": "Pastry"
+      },
+      {
+        "url": "https://images.unsplash.com/photo-1613660635034-b7a09ae11463?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDk1NzZ8MHwxfHNlYXJjaHwyfHxidXJnZXIlMjBmYXN0JTIwZm9vZCUyMHdoaXRlJTIwYmFja2dyb3VuZHxlbnwwfHx8fDE3ODU2MDgzOTR8MA&ixlib=rb-4.1.0&q=85",
+        "description": "Burger",
+        "category": "Food"
+      },
+      {
+        "url": "https://images.unsplash.com/photo-1576670392551-a209604d52be?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NTYxODd8MHwxfHNlYXJjaHwyfHxzb2RhJTIwY2FuJTIwYmV2ZXJhZ2UlMjB3aGl0ZSUyMGJhY2tncm91bmR8ZW58MHx8fHwxNzg1NjA4Mzk0fDA&ixlib=rb-4.1.0&q=85",
+        "description": "Soda Cans",
+        "category": "Beverage"
+      }
+    ],
+    "brand_logos": [
+      {
+        "url": "https://images.unsplash.com/photo-1728424342344-e7debb5aabd4?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjAzMjd8MHwxfHNlYXJjaHwzfHxyZXRhaWwlMjBzdG9yZSUyMGxvZ28lMjBtaW5pbWFsaXN0aWN8ZW58MHx8fHwxNzg1NjA4Mzg0fDA&ixlib=rb-4.1.0&q=85",
+        "description": "Minimalist Store Logo",
+        "category": "Logo"
+      }
+    ]
+  },
+  "component_path": {
+    "ui_components": "/app/frontend/src/components/ui",
+    "pages": "/app/frontend/src/pages",
+    "layouts": "/app/frontend/src/layouts"
+  },
+  "instructions_to_main_agent": [
+    "Language MUST be Indonesian (Bahasa Indonesia) for all labels, placeholders, and feedback messages (e.g., 'Keranjang', 'Bayar', 'Total', 'Tunai', 'Stok', 'Laporan').",
+    "Implement two distinct roles via JWT: Admin (access to all pages including dashboard/inventory/suppliers) and Kasir (access to POS checkout, transactions, receipt).",
+    "Receipt handling (Struk): Implement a modal for viewing the receipt. Provide buttons for 'Cetak' (browser window.print() triggered on a @media print optimized component) and 'Kirim WA/Email' (mocked API call visually showing success).",
+    "Payment integration: Include buttons for 'Tunai' (Cash), 'QRIS', and 'Kartu' (Card). For Cash, implement a quick change calculator (Kembalian).",
+    "Do NOT use HTML <select> or native inputs. Use Shadcn UI dropdowns, dialogs, and inputs.",
+    "Do NOT center align the app container. No .App { text-align: center; }.",
+    "POS layout MUST prioritize desktop screens with an ever-present cart on the right side.",
+    "Ensure all interactive buttons use the data-testid attribute (e.g., data-testid='checkout-button').",
+    "Use Phosphor Icons via 'yarn add @phosphor-icons/react'.",
+    "Use Sonner for toasts via Shadcn."
+  ],
+  "UNIVERSAL GUIDELINES FOR MAIN AGENT": [
+    "Avoid generic 'AI slop' aesthetics. No uniform gradients or basic centered layouts.",
+    "Create depth through layered design elements with z-index hierarchy, but keep POS flat and readable.",
+    "Avoid universal transitions (no 'transition: all'). Use specific property transitions.",
+    "Never use purely transparent backgrounds on overlays or dropdowns. Always use solid bg with 1px border for data apps.",
+    "Always use modern button styles (pill-shaped or rounded-md with crisp hover state).",
+    "NEVER use emojis (🤖🧠💭) for icons. Always use proper SVG icons.",
+    "Use 2-3x more spacing (p-6, p-8) inside major layout containers.",
+    "Prioritize using pre-existing Shadcn components from src/components/ui.",
+    "Examine existing components to understand project patterns before creating new ones."
+  ]
+}

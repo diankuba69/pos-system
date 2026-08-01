@@ -58,10 +58,12 @@ Route handler `GET /api/health` untuk memverifikasi koneksi:
 ```bash
 # .env.local (tidak di-commit) & .env.example (di-commit, tanpa nilai asli)
 NEXT_PUBLIC_SUPABASE_URL=https://<project-ref>.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=<anon-key>
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=<publishable-key>
 ```
 
-Diperoleh dari dashboard Supabase → Settings → API. Verifikasi `.gitignore` mencakup `.env*` (bawaan create-next-app).
+Diperoleh dari dashboard Supabase → Settings → API. Project memakai format kunci baru (`sb_publishable_...`), sehingga nama variabel mengikuti panduan resmi: `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` (bukan `NEXT_PUBLIC_SUPABASE_ANON_KEY`). Verifikasi `.gitignore` mencakup `.env*` (bawaan create-next-app, sudah terkonfirmasi).
+
+Client factory dibuat via shadcn registry resmi Supabase (`npx shadcn@latest add @supabase/supabase-client-nextjs`), dengan fallback penulisan manual jika perintah gagal.
 
 ## Dependensi Baru
 

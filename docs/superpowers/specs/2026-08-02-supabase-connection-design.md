@@ -46,12 +46,9 @@ Factory async untuk server (Server Components, Route Handlers, Server Actions). 
 
 ### `src/app/api/health/route.ts`
 Route handler `GET /api/health` untuk memverifikasi koneksi:
-- Membuat server client, lalu memanggil `supabase.auth.getUser()` — endpoint Auth selalu tersedia tanpa perlu tabel apa pun.
-- Interpretasi hasil:
-  - Error `AuthSessionMissingError` (tidak ada sesi) = **sukses** — server Supabase terjangkau dan anon key valid.
-  - Tidak ada error = **sukses**.
-  - Error lain (fetch gagal, 401 invalid API key, dsb.) = **gagal**.
-- Return `200 { status: "ok" }` jika sukses, `500 { status: "error", message }` jika gagal (mis. env belum diisi / credentials salah).
+- Melakukan request `GET` langsung ke `${NEXT_PUBLIC_SUPABASE_URL}/auth/v1/settings` dengan publishable key pada header `apikey`.
+- Endpoint Auth settings selalu tersedia tanpa memerlukan tabel atau sesi login, dan benar-benar memvalidasi koneksi jaringan serta key (`200` untuk key valid, `401` untuk key invalid).
+- Return `200 { status: "ok" }` jika request berhasil, `500 { status: "error", message }` jika gagal (mis. env belum diisi, credentials salah, atau Supabase tidak terjangkau).
 
 ### Environment Variables
 

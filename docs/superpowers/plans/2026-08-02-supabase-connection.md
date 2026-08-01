@@ -4,7 +4,7 @@
 
 **Goal:** Menghubungkan project POS (Next.js 16 boilerplate) ke Supabase cloud dengan client factory resmi, env variables, dan health endpoint untuk verifikasi koneksi.
 
-**Architecture:** Client factory via pola resmi `@supabase/ssr` — `createBrowserClient` untuk Client Components dan `createServerClient` + `await cookies()` untuk server. Dibuat via shadcn registry resmi Supabase (`@supabase/supabase-client-nextjs`) dengan fallback penulisan manual. Verifikasi via route handler `GET /api/health` yang memanggil `auth.getUser()` (tanpa perlu tabel).
+**Architecture:** Client factory via pola resmi `@supabase/ssr` — `createBrowserClient` untuk Client Components dan `createServerClient` + `await cookies()` untuk server. Dibuat via shadcn registry resmi Supabase (`@supabase/supabase-client-nextjs`) dengan fallback penulisan manual. Verifikasi via route handler `GET /api/health` yang memanggil endpoint Auth settings Supabase secara langsung (tanpa perlu tabel atau sesi login).
 
 **Tech Stack:** Next.js 16.2.12 (App Router), React 19, TypeScript, `@supabase/supabase-js`, `@supabase/ssr`, shadcn CLI.
 

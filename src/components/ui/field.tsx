@@ -34,14 +34,13 @@ export function PasswordInput({ className, ...props }: ComponentPropsWithRef<"in
   const testId = (props as Record<string, unknown>)["data-testid"];
   return (
     <div className="relative">
-      <Input type={show ? "text" : "password"} className={cn("pr-11", className)} {...props} />
+      <Input {...props} type={show ? "text" : "password"} className={cn("pr-11", className)} />
       <button
         type="button"
         data-testid={typeof testId === "string" ? `${testId}-toggle` : undefined}
         onClick={() => setShow((s) => !s)}
-        tabIndex={-1}
         aria-label={show ? "Sembunyikan kata sandi" : "Tampilkan kata sandi"}
-        className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-1.5 text-dim transition-colors duration-150 hover:text-ink"
+        className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-1.5 text-dim transition-colors duration-150 hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
       >
         {show ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
       </button>

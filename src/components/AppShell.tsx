@@ -53,8 +53,9 @@ function TenantSwitcher() {
     const h = (e: MouseEvent) => {
       if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
     };
-    document.addEventListener("mousedown", h);
-    return () => document.removeEventListener("mousedown", h);
+    // "click" (bukan "mousedown") supaya tap di iOS Safari tidak menutup menu sebelum onClick item terpanggil.
+    document.addEventListener("click", h);
+    return () => document.removeEventListener("click", h);
   }, []);
 
   return (
@@ -178,7 +179,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <div className="flex h-screen overflow-hidden bg-bg">
+    <div className="flex h-dvh overflow-hidden bg-bg">
       <aside
         className={cn(
           "no-print hidden flex-col border-r border-line bg-surface transition-[width] duration-200 ease-out lg:flex",
@@ -293,9 +294,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </div>
         </header>
 
-        <main className="flex-1 overflow-y-auto pb-16 lg:pb-0">{children}</main>
+        <main className="flex-1 overflow-y-auto pb-[calc(4rem+env(safe-area-inset-bottom))] lg:pb-0">{children}</main>
 
-        <nav className="no-print fixed bottom-0 left-0 right-0 z-40 flex items-center justify-around border-t border-line bg-surface px-1 py-1.5 lg:hidden">
+        <nav
+          className="no-print fixed bottom-0 left-0 right-0 z-40 flex items-center justify-around border-t border-line bg-surface px-1 py-1.5 lg:hidden"
+          style={{ paddingBottom: "calc(0.375rem + env(safe-area-inset-bottom))" }}
+        >
           {items.slice(0, 5).map((item) => {
             const on = pathname.startsWith(item.href);
             const Icon = item.icon;

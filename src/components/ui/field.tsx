@@ -67,8 +67,9 @@ export function Select({
     const handler = (e: MouseEvent) => {
       if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
     };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
+    // "click" (bukan "mousedown") supaya tap di iOS Safari tidak menutup dropdown sebelum onClick opsi terpanggil.
+    document.addEventListener("click", handler);
+    return () => document.removeEventListener("click", handler);
   }, []);
 
   return (

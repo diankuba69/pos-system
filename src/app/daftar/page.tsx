@@ -25,7 +25,7 @@ const langkah = [
 
 export default function DaftarPage() {
   return (
-    <div className="grid-bg flex min-h-screen items-center justify-center bg-bg px-6 py-16">
+    <div className="grid-bg flex min-h-dvh items-center justify-center bg-bg px-6 py-16">
       <div className="absolute right-5 top-5">
         <ThemeToggle />
       </div>

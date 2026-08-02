@@ -42,7 +42,7 @@ export default function MasukPage() {
   };
 
   return (
-    <div className="grid min-h-screen lg:grid-cols-[1.05fr_1fr]">
+    <div className="grid min-h-dvh lg:grid-cols-[1.05fr_1fr]">
       <div className="relative hidden flex-col justify-between overflow-hidden bg-zinc-950 p-12 lg:flex">
         <div className="grid-bg absolute inset-0 opacity-60" style={{ ["--grid-line" as string]: "#ffffff14" }} />
         <div

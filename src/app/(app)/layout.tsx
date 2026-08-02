@@ -12,7 +12,7 @@ const ADMIN_ONLY_ROUTES = ["/pengguna", "/pengaturan"];
 
 function Pemuat() {
   return (
-    <div className="grid-bg flex h-screen flex-col items-center justify-center gap-4 bg-bg">
+    <div className="grid-bg flex h-dvh flex-col items-center justify-center gap-4 bg-bg">
       <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-ink font-display text-xs font-extrabold text-bg">
         KP
       </span>
@@ -48,7 +48,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   if (tanpaAkses) {
     return (
-      <div className="grid-bg flex h-screen flex-col items-center justify-center gap-4 bg-bg px-6">
+      <div className="grid-bg flex h-dvh flex-col items-center justify-center gap-4 bg-bg px-6">
         <div className="card max-w-md p-8 text-center" data-testid="no-org-access">
           <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-warn-soft text-warn">
             <ShieldAlert className="h-6 w-6" />

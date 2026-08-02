@@ -4,7 +4,7 @@ import { Input, Segmented } from "@/components/ui/field";
 import { Badge, Empty, Skeleton } from "@/components/ui/misc";
 import { Kbd } from "@/components/ui/button";
 import { Button } from "@/components/ui/button";
-import type { Category, ProductStock, Shift, Outlet } from "@/lib/types";
+import type { Category, ProductStock, Shift } from "@/lib/types";
 import { cn, rupiah, waktu } from "@/lib/utils";
 import { Grid2x2, Keyboard, List, Plus, ScanLine, Search } from "lucide-react";
 import Link from "next/link";
@@ -12,7 +12,6 @@ import type { RefObject } from "react";
 
 type ProductPanelProps = {
   shift: Shift | null;
-  outlet: Outlet | null | undefined;
   onShowShortcuts: () => void;
   cariRef: RefObject<HTMLInputElement | null>;
   cari: string;
@@ -32,7 +31,6 @@ type ProductPanelProps = {
 
 export function ProductPanel({
   shift,
-  outlet,
   onShowShortcuts,
   cariRef,
   cari,

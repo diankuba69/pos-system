@@ -315,7 +315,6 @@ export default function KasirPage() {
 
       <ProductPanel
         shift={shift}
-        outlet={outlet}
         onShowShortcuts={() => setBantuanOpen(true)}
         cariRef={cariRef}
         cari={cari}

@@ -29,6 +29,8 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         <Toaster
           position="top-right"
           richColors
+          offset={{ top: "70px", right: "16px", left: "16px" }}
+          mobileOffset={{ top: "70px", right: "16px", left: "16px" }}
           toastOptions={{ className: "font-sans", style: { borderRadius: "12px" } }}
         />
       </body>

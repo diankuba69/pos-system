@@ -1,8 +1,14 @@
 """Extra checks: inactive account enforcement using the throwaway signup account."""
+import os
+from pathlib import Path
+
 import requests
 from dotenv import dotenv_values
-env = dotenv_values("/app/.env.local")
-U = env["NEXT_PUBLIC_SUPABASE_URL"].rstrip("/"); K = env["NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY"]
+env = dotenv_values(Path(__file__).resolve().parent.parent / ".env.local")
+U = (os.environ.get("NEXT_PUBLIC_SUPABASE_URL") or env["NEXT_PUBLIC_SUPABASE_URL"]).rstrip("/")
+K = os.environ.get("NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY") or env["NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY"]
+ADMIN_EMAIL = os.environ["KASIRPRO_TEST_ADMIN_EMAIL"]
+ADMIN_PWD = os.environ["KASIRPRO_TEST_ADMIN_PASSWORD"]
 TEST_EMAIL = "test_sec_f3763ee3@example.com"
 TEST_PWD = "Rahasia123!"
 
@@ -12,7 +18,7 @@ def login(e,p):
         print("login failed", e, r.status_code, r.text[:200]); return None, None
     return r.json()["access_token"], r.json()["user"]["id"]
 
-at,_ = login("admin@toko.com","admin123")
+at,_ = login(ADMIN_EMAIL, ADMIN_PWD)
 A = {"apikey":K,"Authorization":f"Bearer {at}","Content-Type":"application/json"}
 tt,tid = login(TEST_EMAIL, TEST_PWD)
 if not tt:

@@ -26,6 +26,7 @@ setiap perubahan harus ada di kedua tempat dengan isi identik:
 |---|---|
 | `supabase/schema.sql` + `patch_01` + `patch_02` | `prisma/migrations/0_init/migration.sql` |
 | `supabase/patch_03_security.sql` | `prisma/migrations/20260603000000_security_hardening/migration.sql` |
+| `supabase/patch_04_active_select.sql` | `prisma/migrations/20260702120000_active_select_policies/migration.sql` |
 
 ## Catatan repo
 

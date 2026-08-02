@@ -6,19 +6,25 @@ mirroring the exploit path reported in the security review.
 import os
 import time
 import uuid
+from pathlib import Path
 
 import pytest
 import requests
 from dotenv import dotenv_values
 
-env = dotenv_values("/app/.env.local")
+env = dotenv_values(Path(__file__).resolve().parent.parent / ".env.local")
 SUPA_URL = (os.environ.get("NEXT_PUBLIC_SUPABASE_URL") or env.get("NEXT_PUBLIC_SUPABASE_URL") or "").rstrip("/")
 ANON = os.environ.get("NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY") or env.get("NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY")
 if not SUPA_URL or not ANON:
-    raise RuntimeError("Missing Supabase env in /app/.env.local")
+    raise RuntimeError("Missing Supabase env: set NEXT_PUBLIC_SUPABASE_URL / NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY")
 
-ADMIN = ("admin@toko.com", "admin123")
-KASIR = ("kasir@toko.com", "kasir123")
+ADMIN = (os.environ.get("KASIRPRO_TEST_ADMIN_EMAIL"), os.environ.get("KASIRPRO_TEST_ADMIN_PASSWORD"))
+KASIR = (os.environ.get("KASIRPRO_TEST_KASIR_EMAIL"), os.environ.get("KASIRPRO_TEST_KASIR_PASSWORD"))
+if not all(ADMIN) or not all(KASIR):
+    raise RuntimeError(
+        "Missing test credentials: set KASIRPRO_TEST_ADMIN_EMAIL, KASIRPRO_TEST_ADMIN_PASSWORD, "
+        "KASIRPRO_TEST_KASIR_EMAIL, KASIRPRO_TEST_KASIR_PASSWORD"
+    )
 
 REST = f"{SUPA_URL}/rest/v1"
 AUTH = f"{SUPA_URL}/auth/v1"

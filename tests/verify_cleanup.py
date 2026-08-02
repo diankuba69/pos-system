@@ -1,17 +1,23 @@
-import requests
+import os, requests
+from pathlib import Path
 from dotenv import dotenv_values
-env = dotenv_values("/app/.env.local")
-U = env["NEXT_PUBLIC_SUPABASE_URL"].rstrip("/"); K = env["NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY"]
+env = dotenv_values(Path(__file__).resolve().parent.parent / ".env.local")
+U = (os.environ.get("NEXT_PUBLIC_SUPABASE_URL") or env["NEXT_PUBLIC_SUPABASE_URL"]).rstrip("/")
+K = os.environ.get("NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY") or env["NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY"]
+ADMIN_EMAIL = os.environ["KASIRPRO_TEST_ADMIN_EMAIL"]
+ADMIN_PWD = os.environ["KASIRPRO_TEST_ADMIN_PASSWORD"]
+KASIR_EMAIL = os.environ["KASIRPRO_TEST_KASIR_EMAIL"]
+KASIR_PWD = os.environ["KASIRPRO_TEST_KASIR_PASSWORD"]
 
 def login(e,p):
     r = requests.post(f"{U}/auth/v1/token?grant_type=password", headers={"apikey":K}, json={"email":e,"password":p})
     r.raise_for_status(); return r.json()["access_token"], r.json()["user"]["id"]
 
-at,_ = login("admin@toko.com","admin123")
+at,_ = login(ADMIN_EMAIL, ADMIN_PWD)
 A = {"apikey":K,"Authorization":f"Bearer {at}","Content-Type":"application/json"}
 
 # 1. duplicate-transaction check: tunai transactions created today by kasir
-kt,kid = login("kasir@toko.com","kasir123")
+kt,kid = login(KASIR_EMAIL, KASIR_PWD)
 KH = {"apikey":K,"Authorization":f"Bearer {kt}","Content-Type":"application/json"}
 tx = requests.get(f"{U}/rest/v1/transactions?select=invoice_no,created_at,total,payment_method&order=created_at.desc&limit=6", headers=KH).json()
 print("latest kasir tx:")

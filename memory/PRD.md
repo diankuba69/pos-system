@@ -42,3 +42,9 @@ Pilihan user:
 - `create_transaction()` kini wajib ada shift terbuka; transaksi terikat `shift_id`.
 - Diuji testing agent iterasi 2 (12/12 lulus) dan iterasi 3 (3/3 perbaikan minor terverifikasi).
 - Sisa backlog: hapus tampilan riwayat shift kasir lain untuk role kasir, date picker desain sendiri di /transaksi, kirim struk otomatis via email/WA API, void/refund, ekspor laporan.
+
+## Iterasi 3 (2 Agu 2026) — Prisma untuk migrasi skema
+- Prisma 7 dipasang HANYA sebagai pengelola skema/migrasi (runtime app tetap supabase-js + RLS).
+- `prisma.config.ts` (DIRECT_URL, session pooler 5432), `prisma/schema.prisma` hasil introspeksi, baseline `prisma/migrations/0_init/migration.sql` berisi seluruh skema + RLS + fungsi RPC; ditandai applied via `migrate resolve`.
+- Script: `yarn db:pull` / `db:deploy` / `db:status`. Panduan lengkap: `docs/database.md`.
+- Deploy Vercel: set env NEXT_PUBLIC_SUPABASE_*, DATABASE_URL, DIRECT_URL; jalankan `yarn db:deploy` sebelum/di dalam build. `prisma generate` tidak diperlukan.

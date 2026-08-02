@@ -3,8 +3,20 @@
 import { cn } from "@/lib/utils";
 import type { ReactNode } from "react";
 
-export function Panel({ children, className }: { children: ReactNode; className?: string }) {
-  return <div className={cn("rounded-lg border border-zinc-200 bg-white", className)}>{children}</div>;
+export function Panel({
+  children,
+  className,
+  "data-testid": testId,
+}: {
+  children: ReactNode;
+  className?: string;
+  "data-testid"?: string;
+}) {
+  return (
+    <div data-testid={testId} className={cn("rounded-lg border border-zinc-200 bg-white", className)}>
+      {children}
+    </div>
+  );
 }
 
 export function PageHeader({
@@ -58,19 +70,29 @@ export function StatCard({
   value,
   hint,
   icon,
+  "data-testid": testId,
 }: {
   label: string;
   value: string;
   hint?: string;
   icon?: ReactNode;
+  "data-testid"?: string;
 }) {
   return (
-    <div className="rounded-lg border border-zinc-200 bg-white p-5 transition-transform duration-200 ease-out hover:-translate-y-1">
+    <div
+      data-testid={testId}
+      className="rounded-lg border border-zinc-200 bg-white p-5 transition-transform duration-200 ease-out hover:-translate-y-1"
+    >
       <div className="flex items-start justify-between">
         <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-500">{label}</span>
         {icon && <span className="text-indigo-600">{icon}</span>}
       </div>
-      <p className="mt-3 font-display text-2xl font-extrabold tabular-nums tracking-tight text-zinc-900">{value}</p>
+      <p
+        data-testid={testId ? `${testId}-value` : undefined}
+        className="mt-3 font-display text-2xl font-extrabold tabular-nums tracking-tight text-zinc-900"
+      >
+        {value}
+      </p>
       {hint && <p className="mt-1 text-xs text-zinc-500">{hint}</p>}
     </div>
   );

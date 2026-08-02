@@ -131,10 +131,10 @@ export default function KasPage() {
           </Panel>
 
           <div className="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            <StatCard label="Modal awal" value={rupiah(aktif.opening_cash)} icon={<Wallet className="h-4 w-4" />} />
-            <StatCard label="Penjualan tunai" value={rupiah(penjualanTunai)} hint={`${jumlahTx} transaksi`} />
-            <StatCard label="Penjualan non-tunai" value={rupiah(penjualanNonTunai)} hint="QRIS & kartu" />
-            <StatCard label="Kas seharusnya" value={rupiah(seharusnya)} hint="Modal awal + tunai" />
+            <StatCard data-testid="stat-opening-cash" label="Modal awal" value={rupiah(aktif.opening_cash)} icon={<Wallet className="h-4 w-4" />} />
+            <StatCard data-testid="stat-sales-cash" label="Penjualan tunai" value={rupiah(penjualanTunai)} hint={`${jumlahTx} transaksi`} />
+            <StatCard data-testid="stat-sales-noncash" label="Penjualan non-tunai" value={rupiah(penjualanNonTunai)} hint="QRIS & kartu" />
+            <StatCard data-testid="stat-expected-cash" label="Kas seharusnya" value={rupiah(seharusnya)} hint="Modal awal + tunai" />
           </div>
         </>
       ) : (

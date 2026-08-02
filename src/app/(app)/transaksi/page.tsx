@@ -52,7 +52,8 @@ export default function TransaksiPage() {
       .eq("organization_id", orgId)
       .gte("created_at", awalHari(dari))
       .lte("created_at", akhirHari(sampai))
-      .order("created_at", { ascending: false });
+      .order("created_at", { ascending: false })
+      .limit(5000);
     if (lingkup === "outlet") q = q.eq("outlet_id", outletId);
     const t = await q;
     if (t.error) toast.error(t.error.message);

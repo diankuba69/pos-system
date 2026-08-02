@@ -151,7 +151,7 @@ export default function ProdukPage() {
           <span className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-muted font-display text-[11px] font-extrabold text-dim">
             {p.image_url ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={p.image_url} alt={p.name} className="h-full w-full object-cover" />
+              <img src={p.image_url} alt={p.name} loading="lazy" decoding="async" className="h-full w-full object-cover" />
             ) : (
               p.name.slice(0, 2).toUpperCase()
             )}

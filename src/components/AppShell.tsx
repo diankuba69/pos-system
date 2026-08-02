@@ -142,13 +142,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const { profile, role, isAdmin, isManager, signOut, memberships, orgId } = useAuth();
   const pathname = usePathname();
   const router = useRouter();
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed, setCollapsed] = useState(() => typeof window !== "undefined" && localStorage.getItem("kasirpro-sidebar") === "1");
   const [palette, setPalette] = useState(false);
   const [q, setQ] = useState("");
-
-  useEffect(() => {
-    setCollapsed(localStorage.getItem("kasirpro-sidebar") === "1");
-  }, []);
 
   const items = NAV.filter(
     (n) =>

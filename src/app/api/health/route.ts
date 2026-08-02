@@ -23,26 +23,19 @@ export async function GET() {
 
     if (!response.ok) {
       const error = await response.json().catch(() => null)
+      console.error('Health check gagal', { status: response.status, error })
 
       return NextResponse.json(
-        {
-          status: 'error',
-          message:
-            error && typeof error.message === 'string'
-              ? error.message
-              : `Supabase returned HTTP ${response.status}`,
-        },
+        { status: 'error', message: 'Layanan autentikasi tidak dapat dihubungi' },
         { status: 500 }
       )
     }
 
     return NextResponse.json({ status: 'ok' })
   } catch (error) {
+    console.error('Health check gagal', error)
     return NextResponse.json(
-      {
-        status: 'error',
-        message: error instanceof Error ? error.message : 'Unknown error',
-      },
+      { status: 'error', message: 'Layanan autentikasi tidak dapat dihubungi' },
       { status: 500 }
     )
   }

@@ -1,3 +1,4 @@
+import { getClientIp, terlaluSering } from "@/lib/rate-limit";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { getVerifiedCaller } from "@/lib/supabase/request-auth";
 import { NextResponse } from "next/server";
@@ -6,6 +7,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const PESAN: Record<string, string> = {
+  rate_limited: "Terlalu banyak permintaan. Coba lagi beberapa saat lagi.",
   unauthorized: "Sesi Anda tidak valid. Silakan masuk kembali.",
   forbidden: "Hanya admin organisasi yang dapat membuat akun anggota.",
   invalid_json: "Permintaan tidak valid.",
@@ -43,6 +45,9 @@ async function pastikanAdmin(organizationId: string, userId: string) {
 }
 
 export async function PATCH(request: Request) {
+  if (terlaluSering(`anggota:patch:${getClientIp(request)}`, 20, 60_000)) {
+    return json("rate_limited", 429);
+  }
   let verified: Awaited<ReturnType<typeof getVerifiedCaller>>;
   try {
     verified = await getVerifiedCaller(request);
@@ -89,6 +94,9 @@ export async function PATCH(request: Request) {
 }
 
 export async function POST(request: Request) {
+  if (terlaluSering(`anggota:post:${getClientIp(request)}`, 20, 60_000)) {
+    return json("rate_limited", 429);
+  }
   let verified: Awaited<ReturnType<typeof getVerifiedCaller>>;
   try {
     verified = await getVerifiedCaller(request);

@@ -16,7 +16,10 @@ export function BarcodeScanner({
   const videoRef = useRef<HTMLVideoElement>(null);
   const [error, setError] = useState("");
   const cbRef = useRef({ onClose, onDetected });
-  cbRef.current = { onClose, onDetected };
+
+  useEffect(() => {
+    cbRef.current = { onClose, onDetected };
+  }, [onClose, onDetected]);
 
   useEffect(() => {
     if (!open) return;

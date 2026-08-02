@@ -28,6 +28,7 @@ setiap perubahan harus ada di kedua tempat dengan isi identik:
 | `supabase/patch_03_security.sql` | `prisma/migrations/20260603000000_security_hardening/migration.sql` |
 | `supabase/patch_04_active_select.sql` | `prisma/migrations/20260702120000_active_select_policies/migration.sql` |
 | `supabase/patch_05_gapless_invoice.sql` | `prisma/migrations/20260803000000_gapless_invoice/migration.sql` |
+| `supabase/patch_06_device_lock.sql` | `prisma/migrations/20260805000000_device_lock/migration.sql` |
 
 ## Catatan repo
 

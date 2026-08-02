@@ -37,6 +37,13 @@ export default function PenggunaPage() {
     muat();
   };
 
+  const cabutDevice = async (id: string) => {
+    const { error } = await supabase.rpc("admin_unlock_device", { p_user_id: id });
+    if (error) return toast.error(error.message);
+    toast.success("Kunci device dicabut. Kasir bisa login di device baru.");
+    muat();
+  };
+
   return (
     <div className="p-8">
       <PageHeader title="Pengguna" subtitle="Atur peran Admin dan Kasir untuk tim toko Anda." />
@@ -45,7 +52,8 @@ export default function PenggunaPage() {
         <Info className="mt-0.5 h-4 w-4 shrink-0 text-indigo-600" />
         <p className="text-sm text-indigo-900">
           Kasir baru mendaftar sendiri melalui halaman <span className="font-semibold">/daftar</span>. Setelah terdaftar,
-          admin dapat mengubah perannya di tabel ini.
+          admin dapat mengubah perannya di tabel ini. Kasir dibatasi hanya bisa login di 1 device — jika perlu ganti
+          device, cabut kuncinya di kolom <span className="font-semibold">Device</span>.
         </p>
       </Panel>
 
@@ -63,6 +71,7 @@ export default function PenggunaPage() {
                   <th className="px-5 py-3 font-semibold">Email</th>
                   <th className="px-5 py-3 font-semibold">Terdaftar</th>
                   <th className="px-5 py-3 font-semibold">Peran</th>
+                  <th className="px-5 py-3 font-semibold">Device</th>
                 </tr>
               </thead>
               <tbody>
@@ -91,6 +100,24 @@ export default function PenggunaPage() {
                             { value: "kasir", label: "Kasir" },
                           ]}
                         />
+                      )}
+                    </td>
+                    <td className="px-5 py-3">
+                      {u.role !== "kasir" ? (
+                        <span className="text-zinc-400">-</span>
+                      ) : u.locked_device_id ? (
+                        <div className="flex items-center gap-2">
+                          <Badge tone="red">Terkunci</Badge>
+                          <button
+                            data-testid={`revoke-device-${u.id}`}
+                            onClick={() => cabutDevice(u.id)}
+                            className="text-xs font-semibold text-indigo-600 underline-offset-4 transition-colors duration-150 hover:text-indigo-800 hover:underline"
+                          >
+                            Cabut kunci
+                          </button>
+                        </div>
+                      ) : (
+                        <Badge tone="zinc">Bebas</Badge>
                       )}
                     </td>
                   </tr>

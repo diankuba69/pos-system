@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/field";
 import { Modal } from "@/components/ui/modal";
 import { createClient } from "@/lib/supabase/client";
 import type { Category, Product, Shift, StoreSettings, Transaction } from "@/lib/types";
-import { cn, rupiah, tanggal } from "@/lib/utils";
+import { cn, getDeviceId, rupiah, tanggal } from "@/lib/utils";
 import {
   Banknote,
   CreditCard,
@@ -76,7 +76,10 @@ export default function KasirPage() {
   }, [session]);
 
   const bukaKas = async () => {
-    const { error } = await supabase.rpc("open_shift", { p_opening_cash: Number(modalAwal || 0) });
+    const { error } = await supabase.rpc("open_shift", {
+      p_opening_cash: Number(modalAwal || 0),
+      p_device_id: getDeviceId(),
+    });
     if (error) return toast.error(error.message);
     toast.success("Kas dibuka, selamat bertransaksi");
     setModalAwal("");
@@ -171,6 +174,7 @@ export default function KasirPage() {
         p_customer_name: pelanggan || null,
         p_customer_contact: kontak || null,
         p_note: null,
+        p_device_id: getDeviceId(),
       });
       if (error) {
         toast.error(error.message);

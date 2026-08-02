@@ -7,6 +7,7 @@ export type Profile = {
   role: Role;
   is_active: boolean;
   created_at: string;
+  locked_device_id?: string | null;
 };
 
 export type Category = { id: string; name: string; created_at?: string };

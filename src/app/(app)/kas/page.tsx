@@ -7,7 +7,7 @@ import { Modal } from "@/components/ui/modal";
 import { Badge, Empty, PageHeader, Panel, Spinner, StatCard } from "@/components/ui/misc";
 import { createClient } from "@/lib/supabase/client";
 import type { Shift } from "@/lib/types";
-import { rupiah, tanggal } from "@/lib/utils";
+import { getDeviceId, rupiah, tanggal } from "@/lib/utils";
 import { DoorOpen, LockKeyhole, Wallet } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
@@ -71,7 +71,10 @@ export default function KasPage() {
   }, [muat]);
 
   const buka = async () => {
-    const { error } = await supabase.rpc("open_shift", { p_opening_cash: Number(modalAwal || 0) });
+    const { error } = await supabase.rpc("open_shift", {
+      p_opening_cash: Number(modalAwal || 0),
+      p_device_id: getDeviceId(),
+    });
     if (error) return toast.error(error.message);
     toast.success("Kas dibuka");
     setBukaOpen(false);
@@ -85,6 +88,7 @@ export default function KasPage() {
       p_shift_id: aktif.id,
       p_actual_cash: Number(uangFisik || 0),
       p_note: catatan || null,
+      p_device_id: getDeviceId(),
     });
     if (error) return toast.error(error.message);
     setHasil(data as Ringkasan);

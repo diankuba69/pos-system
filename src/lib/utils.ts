@@ -26,3 +26,15 @@ export const tanggal = (iso: string) =>
 
 export const tanggalPendek = (iso: string) =>
   new Date(iso).toLocaleDateString("id-ID", { day: "2-digit", month: "short" });
+
+const DEVICE_ID_KEY = "kasirpro_device_id";
+
+export function getDeviceId() {
+  if (typeof window === "undefined") return "";
+  let id = window.localStorage.getItem(DEVICE_ID_KEY);
+  if (!id) {
+    id = crypto.randomUUID();
+    window.localStorage.setItem(DEVICE_ID_KEY, id);
+  }
+  return id;
+}

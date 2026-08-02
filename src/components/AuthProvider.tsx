@@ -2,6 +2,7 @@
 
 import { createClient } from "@/lib/supabase/client";
 import type { Profile } from "@/lib/types";
+import { getDeviceId } from "@/lib/utils";
 import type { Session } from "@supabase/supabase-js";
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
@@ -67,6 +68,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setSession(null);
       void supabase.auth.signOut();
     }
+  }, [profile, supabase]);
+
+  // Kasir dibatasi 1 device aktif; device asing langsung ditendang keluar.
+  useEffect(() => {
+    if (!profile || profile.role !== "kasir") return;
+    let active = true;
+    supabase.rpc("check_and_lock_device", { p_device_id: getDeviceId() }).then(({ error }) => {
+      if (!active || !error) return;
+      toast.error(error.message || "Akun ini sedang aktif di device lain. Hubungi admin.");
+      setProfile(null);
+      setSession(null);
+      void supabase.auth.signOut();
+    });
+    return () => {
+      active = false;
+    };
   }, [profile, supabase]);
 
   const value: Ctx = {

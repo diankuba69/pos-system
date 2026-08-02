@@ -12,6 +12,7 @@ type Ctx = {
   profile: Profile | null;
   loading: boolean;
   isAdmin: boolean;
+  isManager: boolean;
   refreshProfile: () => Promise<void>;
   signOut: () => Promise<void>;
 };
@@ -91,6 +92,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     profile,
     loading,
     isAdmin: profile?.role === "admin",
+    isManager: profile?.role === "manager",
     refreshProfile: async () => {
       if (session?.user) await loadProfile(session.user.id);
     },

@@ -313,7 +313,7 @@ class TestAdjustStock:
         r = rpc(kasir["s"], "adjust_stock", {
             "p_product_id": product["id"], "p_type": "masuk", "p_qty": 500, "p_note": "TEST_sec"})
         assert r.status_code >= 400, r.text[:300]
-        assert "Hanya admin yang dapat menyesuaikan stok" in r.text, r.text[:300]
+        assert "yang dapat menyesuaikan stok" in r.text, r.text[:300]
         assert stock_of(admin, product["id"]) == before
 
     def test_admin_negative_qty_rejected(self, admin, product):

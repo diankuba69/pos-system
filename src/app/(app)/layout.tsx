@@ -5,13 +5,16 @@ import { useAuth } from "@/components/AuthProvider";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect } from "react";
 
-const ADMIN_ROUTES = ["/produk", "/stok", "/supplier", "/laporan", "/pengguna", "/pengaturan"];
+const MANAGER_ROUTES = ["/produk", "/stok", "/supplier", "/laporan"];
+const ADMIN_ONLY_ROUTES = ["/pengguna", "/pengaturan"];
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
-  const { session, profile, loading, isAdmin } = useAuth();
+  const { session, profile, loading, isAdmin, isManager } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
-  const butuhAdmin = ADMIN_ROUTES.some((r) => pathname.startsWith(r));
+  const butuhManager = MANAGER_ROUTES.some((r) => pathname.startsWith(r));
+  const butuhAdmin = ADMIN_ONLY_ROUTES.some((r) => pathname.startsWith(r));
+  const bolehManager = isAdmin || isManager;
 
   useEffect(() => {
     if (loading) return;
@@ -19,10 +22,16 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       router.replace("/masuk");
       return;
     }
-    if (butuhAdmin && profile && !isAdmin) router.replace("/kasir");
-  }, [loading, session, profile, isAdmin, butuhAdmin, router]);
+    if (profile && ((butuhAdmin && !isAdmin) || (butuhManager && !bolehManager))) {
+      router.replace("/kasir");
+    }
+  }, [loading, session, profile, isAdmin, bolehManager, butuhAdmin, butuhManager, router]);
 
-  const menunggu = loading || !session || (butuhAdmin && (!profile || !isAdmin));
+  const menunggu =
+    loading ||
+    !session ||
+    (butuhAdmin && (!profile || !isAdmin)) ||
+    (butuhManager && (!profile || !bolehManager));
 
   if (menunggu) {
     return (

@@ -97,6 +97,7 @@ export default function PenggunaPage() {
                           onChange={(v) => ubahRole(u.id, v)}
                           options={[
                             { value: "admin", label: "Admin" },
+                            { value: "manager", label: "Manager" },
                             { value: "kasir", label: "Kasir" },
                           ]}
                         />

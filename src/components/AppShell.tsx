@@ -18,23 +18,23 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 
 const NAV = [
-  { href: "/kasir", label: "Kasir", icon: ShoppingCart, adminOnly: false },
-  { href: "/transaksi", label: "Transaksi", icon: ReceiptText, adminOnly: false },
-  { href: "/kas", label: "Kas", icon: Wallet, adminOnly: false },
-  { href: "/laporan", label: "Laporan", icon: BarChart3, adminOnly: true },
-  { href: "/produk", label: "Produk", icon: Package, adminOnly: true },
-  { href: "/stok", label: "Stok", icon: Boxes, adminOnly: true },
-  { href: "/supplier", label: "Supplier", icon: Truck, adminOnly: true },
-  { href: "/pengguna", label: "Pengguna", icon: Users, adminOnly: true },
-  { href: "/pengaturan", label: "Pengaturan", icon: Settings, adminOnly: true },
-];
+  { href: "/kasir", label: "Kasir", icon: ShoppingCart, level: "all" },
+  { href: "/transaksi", label: "Transaksi", icon: ReceiptText, level: "all" },
+  { href: "/kas", label: "Kas", icon: Wallet, level: "all" },
+  { href: "/laporan", label: "Laporan", icon: BarChart3, level: "manager" },
+  { href: "/produk", label: "Produk", icon: Package, level: "manager" },
+  { href: "/stok", label: "Stok", icon: Boxes, level: "manager" },
+  { href: "/supplier", label: "Supplier", icon: Truck, level: "manager" },
+  { href: "/pengguna", label: "Pengguna", icon: Users, level: "admin" },
+  { href: "/pengaturan", label: "Pengaturan", icon: Settings, level: "admin" },
+] as const;
 
 export function AppShell({ children }: { children: React.ReactNode }) {
-  const { profile, isAdmin, signOut } = useAuth();
+  const { profile, isAdmin, isManager, signOut } = useAuth();
   const pathname = usePathname();
   const router = useRouter();
 
-  const items = NAV.filter((n) => !n.adminOnly || isAdmin);
+  const items = NAV.filter((n) => n.level === "all" || (n.level === "manager" && (isAdmin || isManager)) || (n.level === "admin" && isAdmin));
 
   return (
     <div className="flex h-screen overflow-hidden bg-zinc-100">

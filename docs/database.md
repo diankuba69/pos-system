@@ -30,6 +30,7 @@ setiap perubahan harus ada di kedua tempat dengan isi identik:
 | `supabase/patch_05_gapless_invoice.sql` | `prisma/migrations/20260803000000_gapless_invoice/migration.sql` |
 | `supabase/patch_06_device_lock.sql` | `prisma/migrations/20260805000000_device_lock/migration.sql` |
 | `supabase/patch_07_fix_function_overloads.sql` | `prisma/migrations/20260806000000_fix_function_overloads/migration.sql` |
+| `supabase/patch_08_manager_role.sql` | `prisma/migrations/20260807000000_manager_role/migration.sql` |
 
 ## Catatan repo
 

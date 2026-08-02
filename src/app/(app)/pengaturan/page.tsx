@@ -28,7 +28,7 @@ export default function PengaturanPage() {
   const simpan = async () => {
     if (!form) return;
     setSaving(true);
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from("store_settings")
       .update({
         name: form.name,
@@ -38,9 +38,12 @@ export default function PengaturanPage() {
         footer_note: form.footer_note,
         updated_at: new Date().toISOString(),
       })
-      .eq("id", 1);
+      .eq("id", 1)
+      .select();
     setSaving(false);
     if (error) return toast.error(error.message);
+    if (!data || data.length === 0)
+      return toast.error("Gagal menyimpan: hanya admin yang boleh mengubah pengaturan toko.");
     toast.success("Pengaturan disimpan");
   };
 

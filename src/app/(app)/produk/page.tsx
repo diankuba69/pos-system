@@ -315,6 +315,8 @@ export default function ProdukPage() {
                 variant="danger"
                 data-testid={`delete-category-${c.id}`}
                 onClick={async () => {
+                  if (!confirm(`Hapus kategori "${c.name}"? Produk pada kategori ini akan menjadi tanpa kategori.`))
+                    return;
                   const { error } = await supabase.from("categories").delete().eq("id", c.id);
                   if (error) return toast.error(error.message);
                   toast.success("Kategori dihapus");

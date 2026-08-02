@@ -30,8 +30,9 @@ export default function PenggunaPage() {
   }, []);
 
   const ubahRole = async (id: string, role: string) => {
-    const { error } = await supabase.from("profiles").update({ role }).eq("id", id);
+    const { data, error } = await supabase.from("profiles").update({ role }).eq("id", id).select();
     if (error) return toast.error(error.message);
+    if (!data || data.length === 0) return toast.error("Gagal: hanya admin yang boleh mengubah peran pengguna.");
     toast.success("Peran diperbarui");
     muat();
   };

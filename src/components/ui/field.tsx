@@ -26,10 +26,10 @@ export function Textarea({ className, ...props }: TextareaHTMLAttributes<HTMLTex
 
 export function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
-    <label className="block">
+    <div className="block">
       <Label>{label}</Label>
       {children}
-    </label>
+    </div>
   );
 }
 
@@ -79,7 +79,8 @@ export function Select({
               key={o.value}
               type="button"
               data-testid={testId ? `${testId}-option-${o.value}` : undefined}
-              onClick={() => {
+              onClick={(e) => {
+                e.stopPropagation();
                 onChange(o.value);
                 setOpen(false);
               }}

@@ -1,0 +1,18 @@
+// Prisma dipakai HANYA untuk mengelola skema/migrasi database (bukan data layer).
+// Aplikasi tetap mengakses data via supabase-js + RLS.
+//
+// Perintah:
+//   yarn prisma db pull                 -> tarik skema terbaru dari Supabase
+//   yarn prisma migrate dev --name xxx  -> buat migration baru (development)
+//   yarn prisma migrate deploy          -> terapkan migration (CI / production)
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../node_modules/.prisma/client"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}

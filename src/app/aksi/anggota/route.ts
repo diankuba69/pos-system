@@ -188,12 +188,17 @@ export async function DELETE(request: Request) {
 
   // Jika anggota ini juga tergabung di organisasi lain, cabut keanggotaan di organisasi ini saja
   // (jangan hapus akun auth-nya, karena masih dipakai untuk login ke organisasi lain).
-  const { count: totalMemberships } = await supabaseAdmin
+  const { count: totalMemberships, error: countError } = await supabaseAdmin
     .from("organization_memberships")
     .select("id", { count: "exact", head: true })
     .eq("user_id", targetUserId);
 
-  if (totalMemberships && totalMemberships > 1) {
+  if (countError) {
+    console.error("Gagal memeriksa keanggotaan lain", { targetUserId, message: countError.message });
+    return json("delete_failed", 502);
+  }
+
+  if (totalMemberships !== null && totalMemberships > 1) {
     const { error: leaveError } = await supabaseAdmin
       .from("organization_memberships")
       .delete()

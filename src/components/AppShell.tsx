@@ -43,6 +43,11 @@ export const NAV = [
   { href: "/profil", label: "Profil Saya", icon: UserCog, level: "all", group: "Akun" },
 ] as const;
 
+/** Cocokkan path aktif secara tepat (bukan prefix), agar "/kasir" tidak ikut menyalakan "/kas". */
+function navAktif(pathname: string, href: string) {
+  return pathname === href || pathname.startsWith(`${href}/`);
+}
+
 function TenantSwitcher() {
   const { memberships, orgId, pilihOrg, outlets, outletId, pilihOutlet, role } = useAuth();
   const [open, setOpen] = useState(false);
@@ -175,7 +180,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
-  const active = items.find((i) => pathname.startsWith(i.href));
+  const active = items.find((i) => navAktif(pathname, i.href));
   const hasil = items.filter((i) => i.label.toLowerCase().includes(q.trim().toLowerCase()));
   const groups = [...new Set(items.map((i) => i.group))];
   const orgName = memberships.find((m) => m.organization_id === orgId)?.organizations?.name;
@@ -217,7 +222,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               {items
                 .filter((i) => i.group === g)
                 .map((item) => {
-                  const on = pathname.startsWith(item.href);
+                  const on = navAktif(pathname, item.href);
                   const Icon = item.icon;
                   const showAlert = item.href === "/produk" && lowStock > 0;
                   return (
@@ -330,7 +335,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           style={{ paddingBottom: "calc(0.375rem + env(safe-area-inset-bottom))" }}
         >
           {items.slice(0, 5).map((item) => {
-            const on = pathname.startsWith(item.href);
+            const on = navAktif(pathname, item.href);
             const Icon = item.icon;
             const showAlert = item.href === "/produk" && lowStock > 0;
             return (

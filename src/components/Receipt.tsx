@@ -1,16 +1,17 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import type { StoreSettings, Transaction } from "@/lib/types";
+import type { Outlet, Transaction } from "@/lib/types";
 import { rupiah, tanggal } from "@/lib/utils";
 import { Download, Mail, MessageCircle, Printer } from "lucide-react";
 
 const METHOD_LABEL: Record<string, string> = { tunai: "Tunai", qris: "QRIS", kartu: "Kartu" };
 
-function receiptText(tx: Transaction, settings: StoreSettings | null) {
+function receiptText(tx: Transaction, outlet: Outlet | null, orgName?: string) {
   const lines = [
-    `*${settings?.name ?? "KasirPro"}*`,
-    settings?.address ?? "",
+    `*${orgName ?? outlet?.name ?? "KasirPro"}*`,
+    outlet?.name ?? "",
+    outlet?.address ?? "",
     `Struk: ${tx.invoice_no}`,
     `Tanggal: ${tanggal(tx.created_at)}`,
     `Kasir: ${tx.cashier_name ?? "-"}`,
@@ -26,24 +27,24 @@ function receiptText(tx: Transaction, settings: StoreSettings | null) {
     `Bayar (${METHOD_LABEL[tx.payment_method]}): ${rupiah(tx.paid_amount)}`,
     Number(tx.change_amount) > 0 ? `Kembalian: ${rupiah(tx.change_amount)}` : "",
     "",
-    settings?.footer_note ?? "Terima kasih!",
+    outlet?.footer_note ?? "Terima kasih!",
   ];
   return lines.filter(Boolean).join("\n");
 }
 
-export function Receipt({ tx, settings }: { tx: Transaction; settings: StoreSettings | null }) {
+export function Receipt({ tx, outlet, orgName }: { tx: Transaction; outlet: Outlet | null; orgName?: string }) {
   const items = tx.transaction_items ?? [];
 
   const kirimWa = () => {
     const nomor = (tx.customer_contact ?? "").replace(/[^0-9]/g, "");
     const target = nomor.startsWith("0") ? `62${nomor.slice(1)}` : nomor;
-    const url = `https://wa.me/${target}?text=${encodeURIComponent(receiptText(tx, settings))}`;
+    const url = `https://wa.me/${target}?text=${encodeURIComponent(receiptText(tx, outlet, orgName))}`;
     window.open(url, "_blank");
   };
 
   const kirimEmail = () => {
-    const subject = `Struk ${tx.invoice_no} - ${settings?.name ?? "KasirPro"}`;
-    const body = receiptText(tx, settings).replace(/\*/g, "");
+    const subject = `Struk ${tx.invoice_no} - ${orgName ?? outlet?.name ?? "KasirPro"}`;
+    const body = receiptText(tx, outlet, orgName).replace(/\*/g, "");
     window.open(
       `mailto:${tx.customer_contact?.includes("@") ? tx.customer_contact : ""}?subject=${encodeURIComponent(
         subject,
@@ -77,9 +78,10 @@ export function Receipt({ tx, settings }: { tx: Transaction; settings: StoreSett
       y += 4;
     };
 
-    center(settings?.name ?? "KasirPro", 12, true);
-    if (settings?.address) center(settings.address, 8);
-    if (settings?.phone) center(settings.phone, 8);
+    center(orgName ?? outlet?.name ?? "KasirPro", 12, true);
+    if (outlet?.name) center(outlet.name, 8);
+    if (outlet?.address) center(outlet.address, 8);
+    if (outlet?.phone) center(outlet.phone, 8);
     y += 1;
     dashed();
     row("No.", tx.invoice_no);
@@ -102,7 +104,7 @@ export function Receipt({ tx, settings }: { tx: Transaction; settings: StoreSett
     row(METHOD_LABEL[tx.payment_method], rupiah(tx.paid_amount));
     row("Kembalian", rupiah(tx.change_amount));
     y += 3;
-    center(settings?.footer_note ?? "Terima kasih!", 8);
+    center(outlet?.footer_note ?? "Terima kasih!", 8);
 
     doc.save(`Struk-${tx.invoice_no}.pdf`);
   };
@@ -115,9 +117,10 @@ export function Receipt({ tx, settings }: { tx: Transaction; settings: StoreSett
         className="mx-auto max-w-xs rounded-xl border border-dashed border-line bg-surface p-5 font-mono text-[12px] leading-relaxed text-ink"
       >
         <div className="text-center">
-          <p className="font-display text-sm font-extrabold uppercase tracking-wide">{settings?.name ?? "KasirPro"}</p>
-          {settings?.address && <p className="text-[11px] text-dim">{settings.address}</p>}
-          {settings?.phone && <p className="text-[11px] text-dim">{settings.phone}</p>}
+          <p className="font-display text-sm font-extrabold uppercase tracking-wide">{orgName ?? outlet?.name ?? "KasirPro"}</p>
+          {outlet?.name && <p className="text-[11px] text-dim">{outlet.name}</p>}
+          {outlet?.address && <p className="text-[11px] text-dim">{outlet.address}</p>}
+          {outlet?.phone && <p className="text-[11px] text-dim">{outlet.phone}</p>}
         </div>
 
         <div className="mt-3 border-t border-dashed border-line pt-2 text-[11px]">
@@ -186,7 +189,7 @@ export function Receipt({ tx, settings }: { tx: Transaction; settings: StoreSett
           </div>
         </div>
 
-        <p className="mt-4 text-center text-[11px] text-dim">{settings?.footer_note ?? "Terima kasih!"}</p>
+        <p className="mt-4 text-center text-[11px] text-dim">{outlet?.footer_note ?? "Terima kasih!"}</p>
       </div>
 
       <div className="no-print mt-5 flex flex-wrap gap-2">

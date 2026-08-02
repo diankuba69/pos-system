@@ -409,50 +409,56 @@ model sso_providers {
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
 /// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
 model users {
-  instance_id                 String?                @db.Uuid
-  id                          String                 @id @db.Uuid
-  aud                         String?                @db.VarChar(255)
-  role                        String?                @db.VarChar(255)
-  email                       String?                @unique(map: "users_email_partial_key", where: raw("(is_sso_user = false)")) @db.VarChar(255)
-  encrypted_password          String?                @db.VarChar(255)
-  email_confirmed_at          DateTime?              @db.Timestamptz(6)
-  invited_at                  DateTime?              @db.Timestamptz(6)
-  confirmation_token          String?                @unique(map: "confirmation_token_idx", where: raw("((confirmation_token)::text !~ '^[0-9 ]*$'::text)")) @db.VarChar(255)
-  confirmation_sent_at        DateTime?              @db.Timestamptz(6)
-  recovery_token              String?                @unique(map: "recovery_token_idx", where: raw("((recovery_token)::text !~ '^[0-9 ]*$'::text)")) @db.VarChar(255)
-  recovery_sent_at            DateTime?              @db.Timestamptz(6)
-  email_change_token_new      String?                @unique(map: "email_change_token_new_idx", where: raw("((email_change_token_new)::text !~ '^[0-9 ]*$'::text)")) @db.VarChar(255)
-  email_change                String?                @db.VarChar(255)
-  email_change_sent_at        DateTime?              @db.Timestamptz(6)
-  last_sign_in_at             DateTime?              @db.Timestamptz(6)
-  raw_app_meta_data           Json?
-  raw_user_meta_data          Json?
-  is_super_admin              Boolean?
-  created_at                  DateTime?              @db.Timestamptz(6)
-  updated_at                  DateTime?              @db.Timestamptz(6)
-  phone                       String?                @unique
-  phone_confirmed_at          DateTime?              @db.Timestamptz(6)
-  phone_change                String?                @default("")
-  phone_change_token          String?                @default("") @db.VarChar(255)
-  phone_change_sent_at        DateTime?              @db.Timestamptz(6)
-  confirmed_at                DateTime?              @default(dbgenerated("LEAST(email_confirmed_at, phone_confirmed_at)")) @db.Timestamptz(6)
-  email_change_token_current  String?                @unique(map: "email_change_token_current_idx", where: raw("((email_change_token_current)::text !~ '^[0-9 ]*$'::text)")) @default("") @db.VarChar(255)
-  email_change_confirm_status Int?                   @default(0) @db.SmallInt
-  banned_until                DateTime?              @db.Timestamptz(6)
-  reauthentication_token      String?                @unique(map: "reauthentication_token_idx", where: raw("((reauthentication_token)::text !~ '^[0-9 ]*$'::text)")) @default("") @db.VarChar(255)
-  reauthentication_sent_at    DateTime?              @db.Timestamptz(6)
-  is_sso_user                 Boolean                @default(false)
-  deleted_at                  DateTime?              @db.Timestamptz(6)
-  is_anonymous                Boolean                @default(false)
-  identities                  identities[]
-  mfa_factors                 mfa_factors[]
-  oauth_authorizations        oauth_authorizations[]
-  oauth_consents              oauth_consents[]
-  one_time_tokens             one_time_tokens[]
-  sessions                    sessions[]
-  webauthn_challenges         webauthn_challenges[]
-  webauthn_credentials        webauthn_credentials[]
-  profiles                    profiles?
+  instance_id                                String?                    @db.Uuid
+  id                                         String                     @id @db.Uuid
+  aud                                        String?                    @db.VarChar(255)
+  role                                       String?                    @db.VarChar(255)
+  email                                      String?                    @unique(map: "users_email_partial_key", where: raw("(is_sso_user = false)")) @db.VarChar(255)
+  encrypted_password                         String?                    @db.VarChar(255)
+  email_confirmed_at                         DateTime?                  @db.Timestamptz(6)
+  invited_at                                 DateTime?                  @db.Timestamptz(6)
+  confirmation_token                         String?                    @unique(map: "confirmation_token_idx", where: raw("((confirmation_token)::text !~ '^[0-9 ]*$'::text)")) @db.VarChar(255)
+  confirmation_sent_at                       DateTime?                  @db.Timestamptz(6)
+  recovery_token                             String?                    @unique(map: "recovery_token_idx", where: raw("((recovery_token)::text !~ '^[0-9 ]*$'::text)")) @db.VarChar(255)
+  recovery_sent_at                           DateTime?                  @db.Timestamptz(6)
+  email_change_token_new                     String?                    @unique(map: "email_change_token_new_idx", where: raw("((email_change_token_new)::text !~ '^[0-9 ]*$'::text)")) @db.VarChar(255)
+  email_change                               String?                    @db.VarChar(255)
+  email_change_sent_at                       DateTime?                  @db.Timestamptz(6)
+  last_sign_in_at                            DateTime?                  @db.Timestamptz(6)
+  raw_app_meta_data                          Json?
+  raw_user_meta_data                         Json?
+  is_super_admin                             Boolean?
+  created_at                                 DateTime?                  @db.Timestamptz(6)
+  updated_at                                 DateTime?                  @db.Timestamptz(6)
+  phone                                      String?                    @unique
+  phone_confirmed_at                         DateTime?                  @db.Timestamptz(6)
+  phone_change                               String?                    @default("")
+  phone_change_token                         String?                    @default("") @db.VarChar(255)
+  phone_change_sent_at                       DateTime?                  @db.Timestamptz(6)
+  confirmed_at                               DateTime?                  @default(dbgenerated("LEAST(email_confirmed_at, phone_confirmed_at)")) @db.Timestamptz(6)
+  email_change_token_current                 String?                    @unique(map: "email_change_token_current_idx", where: raw("((email_change_token_current)::text !~ '^[0-9 ]*$'::text)")) @default("") @db.VarChar(255)
+  email_change_confirm_status                Int?                       @default(0) @db.SmallInt
+  banned_until                               DateTime?                  @db.Timestamptz(6)
+  reauthentication_token                     String?                    @unique(map: "reauthentication_token_idx", where: raw("((reauthentication_token)::text !~ '^[0-9 ]*$'::text)")) @default("") @db.VarChar(255)
+  reauthentication_sent_at                   DateTime?                  @db.Timestamptz(6)
+  is_sso_user                                Boolean                    @default(false)
+  deleted_at                                 DateTime?                  @db.Timestamptz(6)
+  is_anonymous                               Boolean                    @default(false)
+  identities                                 identities[]
+  mfa_factors                                mfa_factors[]
+  oauth_authorizations                       oauth_authorizations[]
+  oauth_consents                             oauth_consents[]
+  one_time_tokens                            one_time_tokens[]
+  sessions                                   sessions[]
+  webauthn_challenges                        webauthn_challenges[]
+  webauthn_credentials                       webauthn_credentials[]
+  invitations_invitations_accepted_byTousers invitations[]              @relation("invitations_accepted_byTousers")
+  invitations_invitations_created_byTousers  invitations[]              @relation("invitations_created_byTousers")
+  organization_memberships                   organization_memberships[]
+  profiles                                   profiles?
+  shifts                                     shifts[]
+  stock_movements                            stock_movements[]
+  transactions                               transactions[]
 
   @@index([created_at(sort: Desc)], map: "idx_users_created_at_desc")
   @@index([email], map: "idx_users_email")
@@ -500,11 +506,15 @@ model webauthn_credentials {
 
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
 model categories {
-  id         String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  name       String     @unique
-  created_at DateTime   @default(now()) @db.Timestamptz(6)
-  products   products[]
+  id              String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organization_id String        @db.Uuid
+  name            String
+  created_at      DateTime      @default(now()) @db.Timestamptz(6)
+  organizations   organizations @relation(fields: [organization_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  products        products[]
 
+  @@unique([organization_id, id])
+  @@unique([organization_id, name])
   @@schema("public")
 }
 
@@ -512,41 +522,39 @@ model categories {
 /// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
 model products {
   id                String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  sku               String?             @unique
+  organization_id   String              @db.Uuid
+  sku               String?
   name              String
   category_id       String?             @db.Uuid
   supplier_id       String?             @db.Uuid
   price             Decimal             @default(0) @db.Decimal(14, 2)
   cost              Decimal             @default(0) @db.Decimal(14, 2)
-  stock             Int                 @default(0)
   min_stock         Int                 @default(5)
   unit              String              @default("pcs")
   image_url         String?
   is_active         Boolean             @default(true)
   created_at        DateTime            @default(now()) @db.Timestamptz(6)
-  categories        categories?         @relation(fields: [category_id], references: [id], onUpdate: NoAction)
-  suppliers         suppliers?          @relation(fields: [supplier_id], references: [id], onUpdate: NoAction)
+  outlet_stock      outlet_stock[]
+  categories        categories?         @relation(fields: [organization_id, category_id], references: [organization_id, id], onDelete: SetNull, onUpdate: NoAction)
+  organizations     organizations       @relation(fields: [organization_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  suppliers         suppliers?          @relation(fields: [organization_id, supplier_id], references: [organization_id, id], onDelete: SetNull, onUpdate: NoAction)
   stock_movements   stock_movements[]
   transaction_items transaction_items[]
 
-  @@index([category_id], map: "products_category_idx")
+  @@unique([organization_id, sku], map: "products_org_sku_idx", where: raw("(sku IS NOT NULL)"))
+  @@unique([organization_id, id])
+  @@index([organization_id, name], map: "products_org_name_idx")
   @@schema("public")
 }
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
 model profiles {
-  id               String            @id @db.Uuid
-  email            String?
-  full_name        String?
-  role             String            @default("kasir")
-  is_active        Boolean           @default(true)
-  created_at       DateTime          @default(now()) @db.Timestamptz(6)
-  locked_device_id String?
-  users            users             @relation(fields: [id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  shifts           shifts?
-  stock_movements  stock_movements[]
-  transactions     transactions[]
+  id         String   @id @db.Uuid
+  full_name  String?
+  email      String?
+  created_at DateTime @default(now()) @db.Timestamptz(6)
+  users      users    @relation(fields: [id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@schema("public")
 }
@@ -554,67 +562,61 @@ model profiles {
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
 model shifts {
-  id            String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  cashier_id    String?        @unique(map: "shifts_one_open_per_cashier", where: raw("(status = 'buka'::text)")) @db.Uuid
-  cashier_name  String?
-  opening_cash  Decimal        @default(0) @db.Decimal(14, 2)
-  closing_cash  Decimal?       @db.Decimal(14, 2)
-  expected_cash Decimal?       @db.Decimal(14, 2)
-  difference    Decimal?       @db.Decimal(14, 2)
-  sales_cash    Decimal        @default(0) @db.Decimal(14, 2)
-  sales_noncash Decimal        @default(0) @db.Decimal(14, 2)
-  tx_count      Int            @default(0)
-  note          String?
-  status        String         @default("buka")
-  opened_at     DateTime       @default(now()) @db.Timestamptz(6)
-  closed_at     DateTime?      @db.Timestamptz(6)
-  profiles      profiles?      @relation(fields: [cashier_id], references: [id], onUpdate: NoAction)
-  transactions  transactions[]
+  id              String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organization_id String         @db.Uuid
+  outlet_id       String         @db.Uuid
+  cashier_id      String         @db.Uuid
+  cashier_name    String?
+  opening_cash    Decimal        @default(0) @db.Decimal(14, 2)
+  closing_cash    Decimal?       @db.Decimal(14, 2)
+  sales_cash      Decimal        @default(0) @db.Decimal(14, 2)
+  sales_noncash   Decimal        @default(0) @db.Decimal(14, 2)
+  tx_count        Int            @default(0)
+  difference      Decimal?       @db.Decimal(14, 2)
+  note            String?
+  status          String         @default("buka")
+  opened_at       DateTime       @default(now()) @db.Timestamptz(6)
+  closed_at       DateTime?      @db.Timestamptz(6)
+  profiles        users          @relation(fields: [cashier_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  organizations   organizations  @relation(fields: [organization_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  outlets         outlets        @relation(fields: [organization_id, outlet_id], references: [organization_id, id], onDelete: Cascade, onUpdate: NoAction)
+  transactions    transactions[]
 
-  @@index([status])
+  @@unique([outlet_id, cashier_id], map: "shifts_one_open_idx", where: raw("(status = 'buka'::text)"))
+  @@unique([organization_id, id])
+  @@index([organization_id, opened_at(sort: Desc)], map: "shifts_org_opened_idx")
   @@schema("public")
 }
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
 model stock_movements {
-  id          String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  product_id  String?    @db.Uuid
-  type        String
-  qty         Int
-  stock_after Int?
-  note        String?
-  ref         String?
-  supplier_id String?    @db.Uuid
-  created_by  String?    @db.Uuid
-  created_at  DateTime   @default(now()) @db.Timestamptz(6)
-  profiles    profiles?  @relation(fields: [created_by], references: [id], onUpdate: NoAction)
-  products    products?  @relation(fields: [product_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  suppliers   suppliers? @relation(fields: [supplier_id], references: [id], onUpdate: NoAction)
+  id              String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organization_id String        @db.Uuid
+  outlet_id       String        @db.Uuid
+  product_id      String?       @db.Uuid
+  type            String
+  qty             Int
+  stock_after     Int?
+  ref             String?
+  note            String?
+  supplier_id     String?       @db.Uuid
+  created_by      String?       @db.Uuid
+  created_at      DateTime      @default(now()) @db.Timestamptz(6)
+  profiles        users?        @relation(fields: [created_by], references: [id], onUpdate: NoAction)
+  organizations   organizations @relation(fields: [organization_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  outlets         outlets       @relation(fields: [organization_id, outlet_id], references: [organization_id, id], onDelete: Cascade, onUpdate: NoAction)
+  products        products?     @relation(fields: [organization_id, product_id], references: [organization_id, id], onDelete: SetNull, onUpdate: NoAction)
+  suppliers       suppliers?    @relation(fields: [organization_id, supplier_id], references: [organization_id, id], onDelete: SetNull, onUpdate: NoAction)
 
-  @@index([created_at(sort: Desc)], map: "stock_movements_created_idx")
-  @@schema("public")
-}
-
-/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
-/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
-model store_settings {
-  id          Int      @id @default(1)
-  name        String   @default("KasirPro Store")
-  address     String?  @default("Jl. Merdeka No. 1, Jakarta")
-  phone       String?  @default("021-1234567")
-  tax_percent Decimal  @default(0) @db.Decimal(5, 2)
-  footer_note String?  @default("Terima kasih atas kunjungan Anda!")
-  updated_at  DateTime @default(now()) @db.Timestamptz(6)
-  tax_enabled Boolean  @default(true)
-  tax_rate    Decimal  @default(0) @db.Decimal(5, 2)
-
+  @@index([organization_id, created_at(sort: Desc)], map: "stock_movements_org_created_idx")
   @@schema("public")
 }
 
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
 model suppliers {
   id              String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organization_id String            @db.Uuid
   name            String
   contact_person  String?
   phone           String?
@@ -624,21 +626,26 @@ model suppliers {
   created_at      DateTime          @default(now()) @db.Timestamptz(6)
   products        products[]
   stock_movements stock_movements[]
+  organizations   organizations     @relation(fields: [organization_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
+  @@unique([organization_id, id])
+  @@unique([organization_id, name])
   @@schema("public")
 }
 
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
 model transaction_items {
-  id             String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  transaction_id String       @db.Uuid
-  product_id     String?      @db.Uuid
-  product_name   String
-  price          Decimal      @db.Decimal(14, 2)
-  qty            Int
-  subtotal       Decimal      @db.Decimal(14, 2)
-  products       products?    @relation(fields: [product_id], references: [id], onUpdate: NoAction)
-  transactions   transactions @relation(fields: [transaction_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  id              String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organization_id String        @db.Uuid
+  transaction_id  String        @db.Uuid
+  product_id      String?       @db.Uuid
+  product_name    String
+  price           Decimal       @default(0) @db.Decimal(14, 2)
+  qty             Int
+  subtotal        Decimal       @default(0) @db.Decimal(14, 2)
+  organizations   organizations @relation(fields: [organization_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  products        products?     @relation(fields: [organization_id, product_id], references: [organization_id, id], onDelete: SetNull, onUpdate: NoAction)
+  transactions    transactions  @relation(fields: [organization_id, transaction_id], references: [organization_id, id], onDelete: Cascade, onUpdate: NoAction)
 
   @@index([transaction_id], map: "transaction_items_tx_idx")
   @@schema("public")
@@ -648,14 +655,17 @@ model transaction_items {
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
 model transactions {
   id                String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  invoice_no        String              @unique
+  organization_id   String              @db.Uuid
+  outlet_id         String              @db.Uuid
+  shift_id          String?             @db.Uuid
+  invoice_no        String
   cashier_id        String?             @db.Uuid
   cashier_name      String?
   subtotal          Decimal             @default(0) @db.Decimal(14, 2)
   discount          Decimal             @default(0) @db.Decimal(14, 2)
   tax               Decimal             @default(0) @db.Decimal(14, 2)
   total             Decimal             @default(0) @db.Decimal(14, 2)
-  payment_method    String
+  payment_method    String              @default("tunai")
   paid_amount       Decimal             @default(0) @db.Decimal(14, 2)
   change_amount     Decimal             @default(0) @db.Decimal(14, 2)
   customer_name     String?
@@ -663,12 +673,140 @@ model transactions {
   note              String?
   status            String              @default("selesai")
   created_at        DateTime            @default(now()) @db.Timestamptz(6)
-  shift_id          String?             @db.Uuid
   transaction_items transaction_items[]
-  profiles          profiles?           @relation(fields: [cashier_id], references: [id], onUpdate: NoAction)
-  shifts            shifts?             @relation(fields: [shift_id], references: [id], onUpdate: NoAction)
+  profiles          users?              @relation(fields: [cashier_id], references: [id], onUpdate: NoAction)
+  organizations     organizations       @relation(fields: [organization_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  outlets           outlets             @relation(fields: [organization_id, outlet_id], references: [organization_id, id], onDelete: Cascade, onUpdate: NoAction)
+  shifts            shifts?             @relation(fields: [organization_id, shift_id], references: [organization_id, id], onDelete: SetNull, onUpdate: NoAction)
 
-  @@index([created_at(sort: Desc)], map: "transactions_created_idx")
+  @@unique([organization_id, id])
+  @@unique([organization_id, invoice_no])
+  @@index([organization_id, created_at(sort: Desc)], map: "transactions_org_created_idx")
+  @@index([outlet_id, created_at(sort: Desc)], map: "transactions_outlet_created_idx")
+  @@schema("public")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
+model invitations {
+  id                                   String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organization_id                      String        @db.Uuid
+  email                                String
+  role                                 String        @default("kasir")
+  outlet_id                            String?       @db.Uuid
+  code                                 String        @unique
+  status                               String        @default("menunggu")
+  created_by                           String?       @db.Uuid
+  created_at                           DateTime      @default(now()) @db.Timestamptz(6)
+  accepted_at                          DateTime?     @db.Timestamptz(6)
+  accepted_by                          String?       @db.Uuid
+  users_invitations_accepted_byTousers users?        @relation("invitations_accepted_byTousers", fields: [accepted_by], references: [id], onUpdate: NoAction)
+  users_invitations_created_byTousers  users?        @relation("invitations_created_byTousers", fields: [created_by], references: [id], onUpdate: NoAction)
+  organizations                        organizations @relation(fields: [organization_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  outlets                              outlets?      @relation(fields: [organization_id, outlet_id], references: [organization_id, id], onDelete: SetNull, onUpdate: NoAction)
+
+  @@schema("public")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model invoice_counters {
+  outlet_id       String  @id @db.Uuid
+  organization_id String  @db.Uuid
+  last_no         BigInt  @default(0)
+  outlets         outlets @relation(fields: [organization_id, outlet_id], references: [organization_id, id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@schema("public")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model organization_memberships {
+  id                String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organization_id   String        @db.Uuid
+  user_id           String        @db.Uuid
+  role              String        @default("kasir")
+  is_active         Boolean       @default(true)
+  locked_device_id  String?
+  default_outlet_id String?       @db.Uuid
+  created_at        DateTime      @default(now()) @db.Timestamptz(6)
+  outlets           outlets?      @relation(fields: [organization_id, default_outlet_id], references: [organization_id, id], onDelete: SetNull, onUpdate: NoAction)
+  organizations     organizations @relation(fields: [organization_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  users             users         @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([organization_id, user_id])
+  @@index([organization_id], map: "memberships_org_idx")
+  @@index([user_id], map: "memberships_user_idx")
+  @@schema("public")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model organizations {
+  id                       String                     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name                     String
+  slug                     String                     @unique
+  status                   String                     @default("aktif")
+  created_at               DateTime                   @default(now()) @db.Timestamptz(6)
+  categories               categories[]
+  invitations              invitations[]
+  organization_memberships organization_memberships[]
+  outlet_stock             outlet_stock[]
+  outlets                  outlets[]
+  products                 products[]
+  shifts                   shifts[]
+  stock_movements          stock_movements[]
+  suppliers                suppliers[]
+  transaction_items        transaction_items[]
+  transactions             transactions[]
+
+  @@schema("public")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model outlet_stock {
+  organization_id String        @db.Uuid
+  outlet_id       String        @db.Uuid
+  product_id      String        @db.Uuid
+  stock           Int           @default(0)
+  min_stock       Int           @default(5)
+  updated_at      DateTime      @default(now()) @db.Timestamptz(6)
+  organizations   organizations @relation(fields: [organization_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  outlets         outlets       @relation(fields: [organization_id, outlet_id], references: [organization_id, id], onDelete: Cascade, onUpdate: NoAction)
+  products        products      @relation(fields: [organization_id, product_id], references: [organization_id, id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@id([outlet_id, product_id])
+  @@index([organization_id, product_id], map: "outlet_stock_org_idx")
+  @@schema("public")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model outlets {
+  id                       String                     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organization_id          String                     @db.Uuid
+  name                     String
+  code                     String
+  address                  String?
+  phone                    String?
+  tax_enabled              Boolean                    @default(true)
+  tax_rate                 Decimal                    @default(0) @db.Decimal(5, 2)
+  tax_percent              Decimal                    @default(0) @db.Decimal(5, 2)
+  footer_note              String?                    @default("Terima kasih atas kunjungan Anda!")
+  is_active                Boolean                    @default(true)
+  created_at               DateTime                   @default(now()) @db.Timestamptz(6)
+  invitations              invitations[]
+  invoice_counters         invoice_counters?
+  organization_memberships organization_memberships[]
+  outlet_stock             outlet_stock[]
+  organizations            organizations              @relation(fields: [organization_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  shifts                   shifts[]
+  stock_movements          stock_movements[]
+  transactions             transactions[]
+
+  @@unique([organization_id, code])
+  @@unique([organization_id, id])
+  @@index([organization_id], map: "outlets_org_idx")
   @@schema("public")
 }
 

@@ -2,17 +2,20 @@
 
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { Button } from "@/components/ui/button";
-import { Field, Input } from "@/components/ui/field";
+import { Field, Input, Segmented } from "@/components/ui/field";
 import { createClient } from "@/lib/supabase/client";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 
+type Mode = "toko" | "undangan";
+
 export default function DaftarPage() {
   const supabase = createClient();
   const router = useRouter();
-  const [form, setForm] = useState({ full_name: "", email: "", password: "" });
+  const [mode, setMode] = useState<Mode>("toko");
+  const [form, setForm] = useState({ full_name: "", email: "", password: "", org_name: "", code: "" });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [info, setInfo] = useState("");
@@ -22,19 +25,39 @@ export default function DaftarPage() {
     setLoading(true);
     setError("");
     setInfo("");
+
+    const meta: Record<string, string> = { full_name: form.full_name };
+    if (mode === "toko") {
+      if (!form.org_name.trim()) {
+        setLoading(false);
+        return setError("Nama toko / bisnis wajib diisi.");
+      }
+      meta.org_name = form.org_name.trim();
+    } else {
+      if (!form.code.trim()) {
+        setLoading(false);
+        return setError("Kode undangan wajib diisi.");
+      }
+      meta.invitation_code = form.code.trim().toUpperCase();
+    }
+
     const { data, error } = await supabase.auth.signUp({
       email: form.email.trim().toLowerCase(),
       password: form.password,
-      options: { data: { full_name: form.full_name } },
+      options: { data: meta },
     });
     setLoading(false);
     if (error) {
-      setError(error.message);
+      setError(
+        error.message.includes("undangan")
+          ? "Kode undangan tidak valid atau tidak cocok dengan email ini."
+          : error.message,
+      );
       return;
     }
     if (data.session) {
       await supabase.auth.getSession();
-      toast.success("Akun dibuat, selamat datang!");
+      toast.success(mode === "toko" ? "Toko Anda siap dipakai!" : "Berhasil bergabung ke organisasi");
       router.replace("/kasir");
     } else {
       setInfo("Akun dibuat. Cek email Anda untuk konfirmasi, lalu masuk.");
@@ -56,12 +79,47 @@ export default function DaftarPage() {
           <span className="font-display text-base font-extrabold tracking-tight text-ink">KasirPro</span>
         </div>
         <h1 className="mt-6 font-display text-[28px] font-extrabold tracking-tight text-ink">Buat akun</h1>
-        <p className="mt-2 text-sm leading-relaxed text-dim">
-          Pengguna pertama otomatis menjadi <span className="font-semibold text-ink">Admin</span>. Pendaftar berikutnya
-          berperan Kasir dan dapat diubah oleh admin.
+
+        <Segmented
+          className="mt-5 w-full"
+          value={mode}
+          onChange={setMode}
+          testIdPrefix="mode"
+          items={[
+            { value: "toko", label: "Daftarkan toko baru" },
+            { value: "undangan", label: "Punya kode undangan" },
+          ]}
+        />
+
+        <p className="mt-3 text-[13px] leading-relaxed text-dim">
+          {mode === "toko"
+            ? "Anda akan menjadi admin dari organisasi baru beserta satu outlet pusat. Data toko Anda terpisah penuh dari toko lain."
+            : "Masuk ke organisasi yang sudah ada. Gunakan email yang sama dengan yang diundang admin, beserta kode undangannya."}
         </p>
 
         <form onSubmit={submit} className="mt-6 space-y-4">
+          {mode === "toko" ? (
+            <Field label="Nama toko / bisnis">
+              <Input
+                data-testid="register-org"
+                required
+                value={form.org_name}
+                onChange={(e) => setForm({ ...form, org_name: e.target.value })}
+                placeholder="Toko Sinar Jaya"
+              />
+            </Field>
+          ) : (
+            <Field label="Kode undangan">
+              <Input
+                data-testid="register-code"
+                required
+                value={form.code}
+                onChange={(e) => setForm({ ...form, code: e.target.value.toUpperCase() })}
+                placeholder="8 karakter"
+                className="font-mono tracking-[0.2em]"
+              />
+            </Field>
+          )}
           <Field label="Nama lengkap">
             <Input
               data-testid="register-name"
@@ -115,7 +173,7 @@ export default function DaftarPage() {
           )}
 
           <Button data-testid="register-submit" type="submit" size="lg" className="w-full" disabled={loading}>
-            {loading ? "Memproses..." : "Daftar"}
+            {loading ? "Memproses..." : mode === "toko" ? "Daftarkan Toko" : "Gabung Organisasi"}
           </Button>
         </form>
 

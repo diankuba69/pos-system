@@ -1,13 +1,14 @@
 "use client";
 
 import { Receipt } from "@/components/Receipt";
+import { useAuth } from "@/components/AuthProvider";
 import { Button } from "@/components/ui/button";
 import { DataTable, type Column } from "@/components/ui/data-table";
-import { Input } from "@/components/ui/field";
+import { Input, Segmented } from "@/components/ui/field";
 import { Badge, PageHeader, StatCard } from "@/components/ui/misc";
 import { Sheet } from "@/components/ui/modal";
 import { createClient } from "@/lib/supabase/client";
-import type { StoreSettings, Transaction } from "@/lib/types";
+import type { Transaction } from "@/lib/types";
 import { angka, cn, rupiah, tanggal, unduhCsv, waktu } from "@/lib/utils";
 import { Download, Package, ReceiptText, Wallet } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -33,29 +34,31 @@ const PRESET = [
 
 export default function TransaksiPage() {
   const supabase = useMemo(() => createClient(), []);
+  const { orgId, outletId, outlet, outlets, memberships, isAdmin, isManager } = useAuth();
+  const orgName = memberships.find((m) => m.organization_id === orgId)?.organizations?.name;
+  const [lingkup, setLingkup] = useState<"outlet" | "org">("outlet");
   const [rows, setRows] = useState<Transaction[]>([]);
-  const [settings, setSettings] = useState<StoreSettings | null>(null);
   const [loading, setLoading] = useState(true);
   const [dari, setDari] = useState(geser(6));
   const [sampai, setSampai] = useState(hariIni());
   const [detail, setDetail] = useState<Transaction | null>(null);
 
   const muat = useCallback(async () => {
+    if (!orgId || !outletId) return;
     setLoading(true);
-    const [t, s] = await Promise.all([
-      supabase
-        .from("transactions")
-        .select("*, transaction_items(*)")
-        .gte("created_at", awalHari(dari))
-        .lte("created_at", akhirHari(sampai))
-        .order("created_at", { ascending: false }),
-      supabase.from("store_settings").select("*").eq("id", 1).maybeSingle(),
-    ]);
+    let q = supabase
+      .from("transactions")
+      .select("*, transaction_items(*), outlets(name, code)")
+      .eq("organization_id", orgId)
+      .gte("created_at", awalHari(dari))
+      .lte("created_at", akhirHari(sampai))
+      .order("created_at", { ascending: false });
+    if (lingkup === "outlet") q = q.eq("outlet_id", outletId);
+    const t = await q;
     if (t.error) toast.error(t.error.message);
     setRows((t.data as Transaction[]) ?? []);
-    setSettings((s.data as StoreSettings) ?? null);
     setLoading(false);
-  }, [supabase, dari, sampai]);
+  }, [supabase, dari, sampai, orgId, outletId, lingkup]);
 
   useEffect(() => {
     muat();
@@ -78,6 +81,18 @@ export default function TransaksiPage() {
       ),
     },
     { key: "waktu", header: "Waktu", sort: (t) => t.created_at, cell: (t) => <span className="text-dim">{tanggal(t.created_at)}</span> },
+    ...(lingkup === "org"
+      ? [
+          {
+            key: "outlet",
+            header: "Outlet",
+            sort: (t: Transaction) => t.outlets?.code ?? "",
+            cell: (t: Transaction) => (
+              <span className="font-mono text-[11px] font-bold text-brand">{t.outlets?.code ?? "-"}</span>
+            ),
+          } as Column<Transaction>,
+        ]
+      : []),
     { key: "kasir", header: "Kasir", sort: (t) => t.cashier_name ?? "", cell: (t) => <span className="text-dim">{t.cashier_name ?? "-"}</span> },
     {
       key: "item",
@@ -126,9 +141,22 @@ export default function TransaksiPage() {
         title="Transaksi"
         subtitle="Riwayat penjualan beserta struk yang bisa dicetak, diunduh, atau dikirim ke pelanggan."
         action={
+          <div className="flex flex-wrap items-center gap-2">
+          {outlets.length > 1 && (isAdmin || isManager) && (
+            <Segmented
+              value={lingkup}
+              onChange={setLingkup}
+              testIdPrefix="scope"
+              items={[
+                { value: "outlet", label: outlet?.code ?? "Outlet" },
+                { value: "org", label: "Semua outlet" },
+              ]}
+            />
+          )}
           <Button variant="outline" data-testid="export-transaksi" onClick={ekspor} disabled={rows.length === 0}>
             <Download className="h-4 w-4" /> Ekspor CSV
           </Button>
+          </div>
         }
       />
 
@@ -217,7 +245,7 @@ export default function TransaksiPage() {
         subtitle={detail?.invoice_no}
         testId="receipt-sheet"
       >
-        {detail && <Receipt tx={detail} settings={settings} />}
+        {detail && <Receipt tx={detail} outlet={outlets.find((o) => o.id === detail.outlet_id) ?? outlet} orgName={orgName} />}
       </Sheet>
     </div>
   );

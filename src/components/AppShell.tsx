@@ -7,7 +7,10 @@ import { cn } from "@/lib/utils";
 import {
   BarChart3,
   Boxes,
+  Building2,
+  Check,
   ChevronsLeft,
+  ChevronsUpDown,
   Command,
   LogOut,
   Package,
@@ -16,13 +19,14 @@ import {
   Search,
   Settings,
   ShoppingCart,
+  Store,
   Truck,
   Users,
   Wallet,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 export const NAV = [
   { href: "/kasir", label: "Kasir", icon: ShoppingCart, level: "all", group: "Operasional" },
@@ -36,8 +40,104 @@ export const NAV = [
   { href: "/pengaturan", label: "Pengaturan", icon: Settings, level: "admin", group: "Administrasi" },
 ] as const;
 
+function TenantSwitcher() {
+  const { memberships, orgId, pilihOrg, outlets, outletId, pilihOutlet, role } = useAuth();
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const org = memberships.find((m) => m.organization_id === orgId)?.organizations;
+  const outlet = outlets.find((o) => o.id === outletId);
+
+  useEffect(() => {
+    const h = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", h);
+    return () => document.removeEventListener("mousedown", h);
+  }, []);
+
+  return (
+    <div className="relative" ref={ref}>
+      <button
+        data-testid="tenant-switcher"
+        onClick={() => setOpen((o) => !o)}
+        className="flex max-w-[260px] items-center gap-2.5 rounded-xl border border-line bg-surface px-3 py-1.5 text-left transition-colors duration-150 hover:border-ink/30"
+      >
+        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-brand-soft text-brand">
+          <Building2 className="h-3.5 w-3.5" />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block truncate text-[12px] font-bold leading-tight text-ink">{org?.name ?? "—"}</span>
+          <span className="block truncate font-mono text-[10px] leading-tight text-dim">
+            {outlet ? `${outlet.code} · ${outlet.name}` : "tanpa outlet"}
+          </span>
+        </span>
+        <ChevronsUpDown className="h-3.5 w-3.5 shrink-0 text-dim" />
+      </button>
+
+      {open && (
+        <div
+          data-testid="tenant-menu"
+          className="anim-pop absolute right-0 z-[60] mt-1.5 w-72 overflow-hidden rounded-xl border border-line bg-surface p-1.5 shadow-[var(--shadow-pop)]"
+        >
+          <p className="px-2.5 py-1.5 text-[9px] font-bold uppercase tracking-[0.2em] text-dim">Organisasi</p>
+          {memberships.map((m) => (
+            <button
+              key={m.organization_id}
+              data-testid={`switch-org-${m.organization_id}`}
+              onClick={() => {
+                pilihOrg(m.organization_id);
+                setOpen(false);
+              }}
+              className={cn(
+                "flex w-full items-center justify-between gap-2 rounded-lg px-2.5 py-2 text-left text-[13px] transition-colors duration-100",
+                m.organization_id === orgId ? "bg-brand-soft font-bold text-brand" : "text-ink hover:bg-muted",
+              )}
+            >
+              <span className="truncate">{m.organizations?.name}</span>
+              <span className="flex shrink-0 items-center gap-1.5">
+                <span className="rounded-full border border-line px-1.5 text-[9px] font-bold uppercase text-dim">
+                  {m.role}
+                </span>
+                {m.organization_id === orgId && <Check className="h-3.5 w-3.5" />}
+              </span>
+            </button>
+          ))}
+
+          <p className="mt-1.5 border-t border-line px-2.5 pb-1.5 pt-2.5 text-[9px] font-bold uppercase tracking-[0.2em] text-dim">
+            Outlet {role === "kasir" && "(tempat Anda berjualan)"}
+          </p>
+          {outlets.length === 0 && <p className="px-2.5 py-2 text-[13px] text-dim">Belum ada outlet</p>}
+          {outlets.map((o) => (
+            <button
+              key={o.id}
+              data-testid={`switch-outlet-${o.id}`}
+              onClick={() => {
+                pilihOutlet(o.id);
+                setOpen(false);
+              }}
+              className={cn(
+                "flex w-full items-center justify-between gap-2 rounded-lg px-2.5 py-2 text-left text-[13px] transition-colors duration-100",
+                o.id === outletId ? "bg-brand-soft font-bold text-brand" : "text-ink hover:bg-muted",
+              )}
+            >
+              <span className="flex min-w-0 items-center gap-2">
+                <Store className="h-3.5 w-3.5 shrink-0" />
+                <span className="truncate">{o.name}</span>
+              </span>
+              <span className="flex shrink-0 items-center gap-1.5 font-mono text-[10px] text-dim">
+                {o.code}
+                {o.id === outletId && <Check className="h-3.5 w-3.5 text-brand" />}
+              </span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function AppShell({ children }: { children: React.ReactNode }) {
-  const { profile, isAdmin, isManager, signOut } = useAuth();
+  const { profile, role, isAdmin, isManager, signOut, memberships, orgId } = useAuth();
   const pathname = usePathname();
   const router = useRouter();
   const [collapsed, setCollapsed] = useState(false);
@@ -71,6 +171,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const active = items.find((i) => pathname.startsWith(i.href));
   const hasil = items.filter((i) => i.label.toLowerCase().includes(q.trim().toLowerCase()));
   const groups = [...new Set(items.map((i) => i.group))];
+  const orgName = memberships.find((m) => m.organization_id === orgId)?.organizations?.name;
 
   const toggleSidebar = () => {
     const next = !collapsed;
@@ -92,7 +193,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </span>
           {!collapsed && (
             <div className="min-w-0">
-              <p className="truncate font-display text-sm font-extrabold tracking-tight text-ink">KasirPro</p>
+              <p className="truncate font-display text-sm font-extrabold tracking-tight text-ink">
+                {orgName ?? "KasirPro"}
+              </p>
               <p className="text-[9px] font-semibold uppercase tracking-[0.22em] text-dim">Point of Sale</p>
             </div>
           )}
@@ -135,7 +238,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           {!collapsed && (
             <div className="mb-3 rounded-xl border border-line bg-muted/60 px-3 py-2.5">
               <p className="truncate text-sm font-bold text-ink">{profile?.full_name ?? "Pengguna"}</p>
-              <p className="mt-0.5 text-[9px] font-bold uppercase tracking-[0.2em] text-brand">{profile?.role}</p>
+              <p className="mt-0.5 text-[9px] font-bold uppercase tracking-[0.2em] text-brand">{role}</p>
             </div>
           )}
           <div className={cn("flex gap-2", collapsed && "flex-col items-center")}>
@@ -145,9 +248,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 await signOut();
                 router.replace("/masuk");
               }}
-              className={cn(
-                "flex flex-1 items-center justify-center gap-2 rounded-xl border border-line px-3 py-2 text-xs font-semibold text-dim transition-colors duration-150 hover:border-bad/40 hover:bg-bad-soft hover:text-bad",
-              )}
+              className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-line px-3 py-2 text-xs font-semibold text-dim transition-colors duration-150 hover:border-bad/40 hover:bg-bad-soft hover:text-bad"
             >
               <LogOut className="h-4 w-4" />
               {!collapsed && "Keluar"}
@@ -174,19 +275,20 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <span className="text-line">/</span>
             <span className="font-bold text-ink">{active?.label ?? "Beranda"}</span>
           </div>
-          <button
-            data-testid="open-palette"
-            onClick={() => setPalette(true)}
-            className="ml-auto flex items-center gap-2 rounded-xl border border-line bg-surface px-3 py-1.5 text-xs text-dim transition-colors duration-150 hover:border-ink/30 hover:text-ink"
-          >
-            <Search className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">Cari menu</span>
-            <span className="hidden items-center gap-1 sm:flex">
+          <div className="ml-auto flex items-center gap-2">
+            <TenantSwitcher />
+            <button
+              data-testid="open-palette"
+              onClick={() => setPalette(true)}
+              className="hidden items-center gap-2 rounded-xl border border-line bg-surface px-3 py-1.5 text-xs text-dim transition-colors duration-150 hover:border-ink/30 hover:text-ink sm:flex"
+            >
+              <Search className="h-3.5 w-3.5" />
+              <span className="hidden lg:inline">Cari menu</span>
               <Kbd>Ctrl</Kbd>
               <Kbd>K</Kbd>
-            </span>
-          </button>
-          <ThemeToggle />
+            </button>
+            <ThemeToggle />
+          </div>
         </header>
 
         <main className="flex-1 overflow-y-auto pb-16 lg:pb-0">{children}</main>

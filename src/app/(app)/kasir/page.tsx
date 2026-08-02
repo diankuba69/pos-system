@@ -9,7 +9,8 @@ import { Badge, Empty, Skeleton } from "@/components/ui/misc";
 import { Modal } from "@/components/ui/modal";
 import { NumberTicker } from "@/components/ui/number-ticker";
 import { createClient } from "@/lib/supabase/client";
-import type { Category, Product, Shift, StoreSettings, Transaction } from "@/lib/types";
+import type { Category, ProductStock, Shift, Transaction } from "@/lib/types";
+import { ratakanStok } from "@/lib/types";
 import { cn, getDeviceId, rupiah, tanggal, waktu } from "@/lib/utils";
 import {
   Banknote,
@@ -33,7 +34,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
-type Line = { product: Product; qty: number };
+type Line = { product: ProductStock; qty: number };
 type Method = "tunai" | "qris" | "kartu";
 type Hold = { id: string; lines: Line[]; at: string; label: string };
 
@@ -49,10 +50,10 @@ const SHORTCUTS: [string, string][] = [
 
 export default function KasirPage() {
   const supabase = useMemo(() => createClient(), []);
-  const { session, profile } = useAuth();
-  const [products, setProducts] = useState<Product[]>([]);
+  const { session, profile, orgId, outletId, outlet, memberships } = useAuth();
+  const orgName = memberships.find((m) => m.organization_id === orgId)?.organizations?.name;
+  const [products, setProducts] = useState<ProductStock[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
-  const [settings, setSettings] = useState<StoreSettings | null>(null);
   const [shift, setShift] = useState<Shift | null>(null);
   const [modalAwal, setModalAwal] = useState("");
   const [scanOpen, setScanOpen] = useState(false);
@@ -78,21 +79,30 @@ export default function KasirPage() {
   const cariRef = useRef<HTMLInputElement>(null);
 
   const muat = useCallback(async () => {
-    const [p, c, s, sh] = await Promise.all([
-      supabase.from("products").select("*, categories(name)").eq("is_active", true).order("name"),
-      supabase.from("categories").select("*").order("name"),
-      supabase.from("store_settings").select("*").eq("id", 1).maybeSingle(),
-      session?.user
-        ? supabase.from("shifts").select("*").eq("cashier_id", session.user.id).eq("status", "buka").maybeSingle()
-        : Promise.resolve({ data: null }),
+    if (!orgId || !outletId || !session?.user) return;
+    const [p, c, sh] = await Promise.all([
+      supabase
+        .from("products")
+        .select("*, categories(name), outlet_stock!inner(outlet_id, stock, min_stock)")
+        .eq("organization_id", orgId)
+        .eq("is_active", true)
+        .eq("outlet_stock.outlet_id", outletId)
+        .order("name"),
+      supabase.from("categories").select("*").eq("organization_id", orgId).order("name"),
+      supabase
+        .from("shifts")
+        .select("*")
+        .eq("outlet_id", outletId)
+        .eq("cashier_id", session.user.id)
+        .eq("status", "buka")
+        .maybeSingle(),
     ]);
     if (p.error) toast.error(`Gagal memuat produk: ${p.error.message}`);
-    setProducts((p.data as Product[]) ?? []);
+    setProducts(ratakanStok(p.data ?? []));
     setCategories((c.data as Category[]) ?? []);
-    setSettings((s.data as StoreSettings) ?? null);
     setShift((sh?.data as Shift) ?? null);
     setLoading(false);
-  }, [supabase, session]);
+  }, [supabase, session, orgId, outletId]);
 
   useEffect(() => {
     muat();
@@ -100,6 +110,7 @@ export default function KasirPage() {
 
   const bukaKas = async () => {
     const { error } = await supabase.rpc("open_shift", {
+      p_outlet_id: outletId,
       p_opening_cash: Number(modalAwal || 0),
       p_device_id: getDeviceId(),
     });
@@ -119,13 +130,13 @@ export default function KasirPage() {
   const subtotal = lines.reduce((a, l) => a + Number(l.product.price) * l.qty, 0);
   const jumlahItem = lines.reduce((a, l) => a + l.qty, 0);
   const diskonNum = Math.min(Number(diskon || 0), subtotal);
-  const tarifPajak = settings?.tax_enabled === false ? 0 : Number(settings?.tax_percent ?? 0);
+  const tarifPajak = Number(outlet?.tax_percent ?? 0);
   const pajak = Math.round(((subtotal - diskonNum) * tarifPajak) / 100);
   const total = subtotal - diskonNum + pajak;
   const dibayarNum = metode === "tunai" ? Number(dibayar || 0) : total;
   const kembalian = Math.max(dibayarNum - total, 0);
 
-  const tambah = useCallback((p: Product) => {
+  const tambah = useCallback((p: ProductStock) => {
     setLines((prev) => {
       const ada = prev.find((l) => l.product.id === p.id);
       if (ada) {
@@ -219,6 +230,7 @@ export default function KasirPage() {
     setProses(true);
     try {
       const { data, error } = await supabase.rpc("create_transaction", {
+        p_outlet_id: outletId,
         p_items: lines.map((l) => ({ product_id: l.product.id, qty: l.qty })),
         p_payment_method: metode,
         p_paid_amount: dibayarNum,
@@ -309,8 +321,8 @@ export default function KasirPage() {
             </span>
             <h2 className="mt-4 font-display text-2xl font-extrabold tracking-tight text-ink">Buka Kas Dulu</h2>
             <p className="mt-2 text-sm leading-relaxed text-dim">
-              Masukkan jumlah uang tunai yang ada di kasir saat ini untuk memulai shift. Semua transaksi Anda akan
-              tercatat pada shift ini.
+              Masukkan jumlah uang tunai yang ada di kasir {outlet ? `outlet ${outlet.name}` : ""} saat ini untuk memulai
+              shift. Semua transaksi Anda akan tercatat pada shift dan outlet ini.
             </p>
             <div className="mt-5">
               <span className="mb-1.5 block text-[10px] font-semibold uppercase tracking-[0.18em] text-dim">
@@ -473,7 +485,7 @@ export default function KasirPage() {
                     <span
                       className={cn(
                         "absolute right-2 top-2 rounded-full border px-2 py-0.5 font-mono text-[10px] font-bold tabular-nums backdrop-blur",
-                        p.stock <= p.min_stock
+                        p.stock <= p.stock_min
                           ? "border-bad/25 bg-bad-soft text-bad"
                           : "border-line bg-surface/85 text-dim",
                       )}
@@ -513,7 +525,7 @@ export default function KasirPage() {
                     <span className="block truncate text-sm font-semibold text-ink">{p.name}</span>
                     <span className="block font-mono text-[11px] text-dim">{p.sku ?? "tanpa SKU"}</span>
                   </span>
-                  <Badge tone={p.stock <= p.min_stock ? "red" : "zinc"}>
+                  <Badge tone={p.stock <= p.stock_min ? "red" : "zinc"}>
                     {p.stock} {p.unit}
                   </Badge>
                   <span className="w-28 shrink-0 text-right font-display text-sm font-extrabold tabular-nums text-ink">
@@ -857,7 +869,7 @@ export default function KasirPage() {
       </Modal>
 
       <Modal open={!!struk} onClose={() => setStruk(null)} title="Struk Pembayaran" testId="receipt-modal">
-        {struk && <Receipt tx={struk} settings={settings} />}
+        {struk && <Receipt tx={struk} outlet={outlet} orgName={orgName} />}
       </Modal>
 
       <Modal

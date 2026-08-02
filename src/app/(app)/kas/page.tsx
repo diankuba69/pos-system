@@ -26,7 +26,7 @@ type Ringkasan = {
 
 export default function KasPage() {
   const supabase = useMemo(() => createClient(), []);
-  const { session, isAdmin } = useAuth();
+  const { session, isAdmin, isManager, orgId, outletId, outlet, outlets } = useAuth();
   const [aktif, setAktif] = useState<Shift | null>(null);
   const [riwayat, setRiwayat] = useState<Shift[]>([]);
   const [penjualanTunai, setPenjualanTunai] = useState(0);
@@ -42,11 +42,22 @@ export default function KasPage() {
   const [hasil, setHasil] = useState<Ringkasan | null>(null);
 
   const muat = useCallback(async () => {
-    if (!session?.user) return;
-    let riwayatQuery = supabase.from("shifts").select("*").order("opened_at", { ascending: false }).limit(40);
-    if (!isAdmin) riwayatQuery = riwayatQuery.eq("cashier_id", session.user.id);
+    if (!session?.user || !orgId || !outletId) return;
+    let riwayatQuery = supabase
+      .from("shifts")
+      .select("*, outlets(name, code)")
+      .eq("organization_id", orgId)
+      .order("opened_at", { ascending: false })
+      .limit(40);
+    if (!isAdmin && !isManager) riwayatQuery = riwayatQuery.eq("cashier_id", session.user.id);
     const [a, h] = await Promise.all([
-      supabase.from("shifts").select("*").eq("cashier_id", session.user.id).eq("status", "buka").maybeSingle(),
+      supabase
+        .from("shifts")
+        .select("*, outlets(name, code)")
+        .eq("outlet_id", outletId)
+        .eq("cashier_id", session.user.id)
+        .eq("status", "buka")
+        .maybeSingle(),
       riwayatQuery,
     ]);
     const shift = (a.data as Shift) ?? null;
@@ -65,7 +76,7 @@ export default function KasPage() {
       setJumlahTx(0);
     }
     setLoading(false);
-  }, [supabase, session, isAdmin]);
+  }, [supabase, session, isAdmin, isManager, orgId, outletId]);
 
   useEffect(() => {
     muat();
@@ -73,6 +84,7 @@ export default function KasPage() {
 
   const buka = async () => {
     const { error } = await supabase.rpc("open_shift", {
+      p_outlet_id: outletId,
       p_opening_cash: Number(modalAwal || 0),
       p_device_id: getDeviceId(),
     });
@@ -105,6 +117,16 @@ export default function KasPage() {
 
   const columns: Column<Shift>[] = [
     { key: "kasir", header: "Kasir", sort: (s) => s.cashier_name ?? "", cell: (s) => <span className="font-semibold text-ink">{s.cashier_name ?? "-"}</span> },
+    ...(outlets.length > 1
+      ? [
+          {
+            key: "outlet",
+            header: "Outlet",
+            sort: (s: Shift) => s.outlets?.code ?? "",
+            cell: (s: Shift) => <span className="font-mono text-[11px] font-bold text-brand">{s.outlets?.code ?? "-"}</span>,
+          } as Column<Shift>,
+        ]
+      : []),
     { key: "buka", header: "Buka", sort: (s) => s.opened_at, cell: (s) => <span className="font-mono text-[11px] text-dim">{tanggal(s.opened_at)}</span> },
     { key: "tutup", header: "Tutup", cell: (s) => <span className="font-mono text-[11px] text-dim">{s.closed_at ? tanggal(s.closed_at) : "-"}</span> },
     { key: "modal", header: "Modal awal", align: "right", sort: (s) => Number(s.opening_cash), cell: (s) => <span className="font-mono tabular-nums text-dim">{rupiah(s.opening_cash)}</span> },
@@ -139,7 +161,7 @@ export default function KasPage() {
       <PageHeader
         eyebrow="Operasional"
         title="Kas & Shift"
-        subtitle="Buka kas sebelum berjualan, tutup kas di akhir shift untuk mencocokkan uang fisik dengan sistem."
+        subtitle={`Outlet aktif: ${outlet?.name ?? "-"}. Buka kas sebelum berjualan, tutup kas di akhir shift untuk mencocokkan uang fisik dengan sistem.`}
         action={
           aktif ? (
             <Button data-testid="open-close-shift" variant="subtle" onClick={() => setTutupOpen(true)}>
@@ -204,7 +226,7 @@ export default function KasPage() {
         emptyText="Belum ada riwayat shift"
         emptyHint="Riwayat buka/tutup kas akan muncul di sini."
         pageSize={10}
-        toolbar={<span className="text-[11px] text-dim">{isAdmin ? "Semua kasir" : "Shift Anda"}</span>}
+        toolbar={<span className="text-[11px] text-dim">{isAdmin || isManager ? "Semua kasir di organisasi" : "Shift Anda"}</span>}
       />
 
       <Modal open={bukaOpen} onClose={() => setBukaOpen(false)} title="Buka Kas" testId="open-shift-modal">

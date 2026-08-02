@@ -32,6 +32,17 @@ setiap perubahan harus ada di kedua tempat dengan isi identik:
 | `supabase/patch_07_fix_function_overloads.sql` | `prisma/migrations/20260806000000_fix_function_overloads/migration.sql` |
 | `supabase/patch_08_manager_role.sql` | `prisma/migrations/20260807000000_manager_role/migration.sql` |
 | `supabase/patch_09_tax_toggle.sql` | `prisma/migrations/20260610000000_tax_toggle/migration.sql` |
+| `supabase/patch_10_multi_tenant.sql` | `prisma/migrations/20260901000000_multi_tenant/migration.sql` |
+
+> **Patch 10 mengubah arsitektur menjadi MULTI-TENANT dan membangun ulang seluruh skema.**
+> Hierarki: `organizations` → `outlets` → data operasional. Peran ada di `organization_memberships`
+> (admin/manager/kasir per organisasi), bukan lagi di `profiles`. Semua tabel bisnis memiliki
+> `organization_id NOT NULL`, composite foreign key, dan unique constraint ber-scope tenant.
+> Stok bersifat per outlet (`outlet_stock`), nomor struk per outlet (`invoice_counters`),
+> pengaturan struk/pajak per outlet. Penulisan transaksi/shift/stok hanya lewat RPC
+> `create_transaction`, `open_shift`, `close_shift`, `adjust_stock` (SECURITY DEFINER, memvalidasi
+> tenant + peran + device). Anggota baru masuk lewat `create_invitation` (admin saja).
+> Uji isolasi: `python3 tests/isolation_test.py`.
 
 ## Catatan repo
 

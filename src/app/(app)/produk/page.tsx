@@ -1,5 +1,6 @@
 "use client";
 
+import { useAuth } from "@/components/AuthProvider";
 import { Button } from "@/components/ui/button";
 import { useConfirm } from "@/components/ui/confirm";
 import { DataTable, type Column } from "@/components/ui/data-table";
@@ -7,7 +8,8 @@ import { Field, Input, Select } from "@/components/ui/field";
 import { Badge, PageHeader, StatCard } from "@/components/ui/misc";
 import { Modal } from "@/components/ui/modal";
 import { createClient } from "@/lib/supabase/client";
-import type { Category, Product, Supplier } from "@/lib/types";
+import type { Category, ProductStock, Supplier } from "@/lib/types";
+import { ratakanStok } from "@/lib/types";
 import { angka, rupiah } from "@/lib/utils";
 import { AlertTriangle, Coins, Package, Pencil, Plus, Tag, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -29,7 +31,8 @@ const kosong = {
 export default function ProdukPage() {
   const supabase = useMemo(() => createClient(), []);
   const confirm = useConfirm();
-  const [products, setProducts] = useState<Product[]>([]);
+  const { orgId, outletId, outlet, outlets } = useAuth();
+  const [products, setProducts] = useState<ProductStock[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [loading, setLoading] = useState(true);
@@ -40,17 +43,23 @@ export default function ProdukPage() {
   const [katBaru, setKatBaru] = useState("");
 
   const muat = useCallback(async () => {
+    if (!orgId || !outletId) return;
     const [p, c, s] = await Promise.all([
-      supabase.from("products").select("*, categories(name), suppliers(name)").order("created_at", { ascending: false }),
-      supabase.from("categories").select("*").order("name"),
-      supabase.from("suppliers").select("*").order("name"),
+      supabase
+        .from("products")
+        .select("*, categories(name), suppliers(name), outlet_stock(outlet_id, stock, min_stock)")
+        .eq("organization_id", orgId)
+        .eq("outlet_stock.outlet_id", outletId)
+        .order("created_at", { ascending: false }),
+      supabase.from("categories").select("*").eq("organization_id", orgId).order("name"),
+      supabase.from("suppliers").select("*").eq("organization_id", orgId).order("name"),
     ]);
     if (p.error) toast.error(p.error.message);
-    setProducts((p.data as Product[]) ?? []);
+    setProducts(ratakanStok(p.data ?? []));
     setCategories((c.data as Category[]) ?? []);
     setSuppliers((s.data as Supplier[]) ?? []);
     setLoading(false);
-  }, [supabase]);
+  }, [supabase, orgId, outletId]);
 
   useEffect(() => {
     muat();
@@ -65,26 +74,51 @@ export default function ProdukPage() {
       supplier_id: form.supplier_id || null,
       price: Number(form.price || 0),
       cost: Number(form.cost || 0),
-      stock: Number(form.stock || 0),
       min_stock: Number(form.min_stock || 0),
       unit: form.unit || "pcs",
       image_url: form.image_url || null,
     };
-    const { error } = editId
-      ? await supabase.from("products").update(payload).eq("id", editId)
-      : await supabase.from("products").insert(payload);
-    if (error) return toast.error(error.message);
-    toast.success(editId ? "Produk diperbarui" : "Produk ditambahkan");
+
+    if (editId) {
+      const { error } = await supabase.from("products").update(payload).eq("id", editId);
+      if (error) return toast.error(error.message);
+      const { error: e2 } = await supabase
+        .from("outlet_stock")
+        .update({ stock: Number(form.stock || 0), min_stock: Number(form.min_stock || 0), updated_at: new Date().toISOString() })
+        .eq("product_id", editId)
+        .eq("outlet_id", outletId!);
+      if (e2) return toast.error(e2.message);
+      toast.success(`Produk diperbarui (stok untuk ${outlet?.name})`);
+    } else {
+      const { data, error } = await supabase
+        .from("products")
+        .insert({ ...payload, organization_id: orgId })
+        .select("id")
+        .single();
+      if (error) return toast.error(error.message);
+      // Produk baru langsung tersedia di semua outlet; stok awal hanya untuk outlet aktif.
+      const baris = outlets.map((o) => ({
+        organization_id: orgId,
+        outlet_id: o.id,
+        product_id: (data as { id: string }).id,
+        stock: o.id === outletId ? Number(form.stock || 0) : 0,
+        min_stock: Number(form.min_stock || 0),
+      }));
+      const { error: e2 } = await supabase.from("outlet_stock").insert(baris);
+      if (e2) return toast.error(e2.message);
+      toast.success(`Produk ditambahkan ke ${outlets.length} outlet`);
+    }
+
     setOpen(false);
     setEditId(null);
     setForm({ ...kosong });
     muat();
   };
 
-  const hapus = async (p: Product) => {
+  const hapus = async (p: ProductStock) => {
     const ok = await confirm({
       title: `Hapus "${p.name}"?`,
-      description: "Produk akan dihapus permanen dari katalog. Riwayat transaksi lama tetap tersimpan.",
+      description: "Produk dihapus dari katalog seluruh outlet organisasi ini. Riwayat transaksi lama tetap tersimpan.",
       confirmText: "Hapus produk",
       tone: "danger",
     });
@@ -97,7 +131,7 @@ export default function ProdukPage() {
 
   const tambahKategori = async () => {
     if (!katBaru.trim()) return;
-    const { error } = await supabase.from("categories").insert({ name: katBaru.trim() });
+    const { error } = await supabase.from("categories").insert({ name: katBaru.trim(), organization_id: orgId });
     if (error) return toast.error(error.message);
     setKatBaru("");
     toast.success("Kategori ditambahkan");
@@ -105,9 +139,9 @@ export default function ProdukPage() {
   };
 
   const nilaiStok = products.reduce((a, p) => a + p.stock * Number(p.cost), 0);
-  const menipis = products.filter((p) => p.stock <= p.min_stock).length;
+  const menipis = products.filter((p) => p.stock <= p.stock_min).length;
 
-  const columns: Column<Product>[] = [
+  const columns: Column<ProductStock>[] = [
     {
       key: "nama",
       header: "Produk",
@@ -150,20 +184,16 @@ export default function ProdukPage() {
       cell: (p) => {
         const m = Number(p.price) - Number(p.cost);
         const pct = Number(p.price) ? (m / Number(p.price)) * 100 : 0;
-        return (
-          <span className={`font-mono text-xs font-bold tabular-nums ${m > 0 ? "text-ok" : "text-dim"}`}>
-            {pct.toFixed(0)}%
-          </span>
-        );
+        return <span className={`font-mono text-xs font-bold tabular-nums ${m > 0 ? "text-ok" : "text-dim"}`}>{pct.toFixed(0)}%</span>;
       },
     },
     {
       key: "stok",
-      header: "Stok",
+      header: `Stok ${outlet?.code ?? ""}`,
       align: "right",
       sort: (p) => p.stock,
       cell: (p) => (
-        <Badge tone={p.stock <= p.min_stock ? "red" : "green"}>
+        <Badge tone={p.stock <= p.stock_min ? "red" : "green"}>
           {p.stock} {p.unit}
         </Badge>
       ),
@@ -190,7 +220,7 @@ export default function ProdukPage() {
                 price: String(p.price),
                 cost: String(p.cost),
                 stock: String(p.stock),
-                min_stock: String(p.min_stock),
+                min_stock: String(p.stock_min),
                 unit: p.unit,
                 image_url: p.image_url ?? "",
               });
@@ -220,7 +250,7 @@ export default function ProdukPage() {
       <PageHeader
         eyebrow="Inventori"
         title="Produk"
-        subtitle="Kelola katalog, harga jual, margin, dan kategori produk toko Anda."
+        subtitle={`Katalog & harga berlaku untuk seluruh organisasi. Kolom stok menampilkan outlet aktif: ${outlet?.name ?? "-"}.`}
         action={
           <div className="flex gap-2">
             <Button variant="outline" data-testid="open-category-modal" onClick={() => setKatOpen(true)}>
@@ -242,15 +272,15 @@ export default function ProdukPage() {
 
       <div className="mb-5 grid gap-4 sm:grid-cols-3">
         <StatCard label="Total produk" value={angka(products.length)} numeric={products.length} format={angka} icon={<Package className="h-4 w-4" />} />
-        <StatCard label="Nilai stok (harga beli)" value={rupiah(nilaiStok)} numeric={nilaiStok} format={rupiah} icon={<Coins className="h-4 w-4" />} />
         <StatCard
-          label="Perlu restock"
-          value={angka(menipis)}
-          numeric={menipis}
-          format={angka}
-          hint="Stok <= minimum"
-          icon={<AlertTriangle className="h-4 w-4" />}
+          label={`Nilai stok ${outlet?.code ?? ""}`}
+          value={rupiah(nilaiStok)}
+          numeric={nilaiStok}
+          format={rupiah}
+          hint="Berdasarkan harga beli"
+          icon={<Coins className="h-4 w-4" />}
         />
+        <StatCard label="Perlu restock" value={angka(menipis)} numeric={menipis} format={angka} hint="Stok <= minimum" icon={<AlertTriangle className="h-4 w-4" />} />
       </div>
 
       <DataTable
@@ -282,7 +312,7 @@ export default function ProdukPage() {
         open={open}
         onClose={() => setOpen(false)}
         title={editId ? "Ubah Produk" : "Produk Baru"}
-        subtitle="Harga jual & stok akan langsung dipakai di halaman Kasir"
+        subtitle={`Stok yang diisi berlaku untuk outlet ${outlet?.name ?? "-"}`}
         width="max-w-2xl"
         testId="product-modal"
       >
@@ -339,7 +369,7 @@ export default function ProdukPage() {
               className="text-right font-mono tabular-nums"
             />
           </Field>
-          <Field label="Stok">
+          <Field label={`Stok di ${outlet?.code ?? "outlet aktif"}`}>
             <Input
               data-testid="form-stock"
               type="number"

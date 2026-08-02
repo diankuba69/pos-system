@@ -1,12 +1,14 @@
 "use client";
 
+import { useAuth } from "@/components/AuthProvider";
 import { Button } from "@/components/ui/button";
 import { DataTable, type Column } from "@/components/ui/data-table";
 import { Field, Input, Select, Textarea } from "@/components/ui/field";
 import { Badge, PageHeader, Panel, SectionTitle, StatCard } from "@/components/ui/misc";
 import { Modal } from "@/components/ui/modal";
 import { createClient } from "@/lib/supabase/client";
-import type { Product, StockMovement, Supplier } from "@/lib/types";
+import type { ProductStock, StockMovement, Supplier } from "@/lib/types";
+import { ratakanStok } from "@/lib/types";
 import { angka, rupiah, tanggal } from "@/lib/utils";
 import { AlertTriangle, ArrowDownUp, Boxes, Coins, PackageCheck } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -20,7 +22,8 @@ const TIPE = [
 
 export default function StokPage() {
   const supabase = useMemo(() => createClient(), []);
-  const [products, setProducts] = useState<Product[]>([]);
+  const { orgId, outletId, outlet } = useAuth();
+  const [products, setProducts] = useState<ProductStock[]>([]);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [movements, setMovements] = useState<StockMovement[]>([]);
   const [loading, setLoading] = useState(true);
@@ -28,23 +31,34 @@ export default function StokPage() {
   const [form, setForm] = useState({ product_id: "", type: "masuk", qty: "", note: "", supplier_id: "" });
 
   const muat = useCallback(async () => {
+    if (!orgId || !outletId) return;
     const [p, s, m] = await Promise.all([
-      supabase.from("products").select("*").order("name"),
-      supabase.from("suppliers").select("*").order("name"),
-      supabase.from("stock_movements").select("*, products(name)").order("created_at", { ascending: false }).limit(120),
+      supabase
+        .from("products")
+        .select("*, outlet_stock!inner(outlet_id, stock, min_stock)")
+        .eq("organization_id", orgId)
+        .eq("outlet_stock.outlet_id", outletId)
+        .order("name"),
+      supabase.from("suppliers").select("*").eq("organization_id", orgId).order("name"),
+      supabase
+        .from("stock_movements")
+        .select("*, products(name), outlets(name, code)")
+        .eq("outlet_id", outletId)
+        .order("created_at", { ascending: false })
+        .limit(120),
     ]);
     if (p.error) toast.error(p.error.message);
-    setProducts((p.data as Product[]) ?? []);
+    setProducts(ratakanStok(p.data ?? []));
     setSuppliers((s.data as Supplier[]) ?? []);
     setMovements((m.data as StockMovement[]) ?? []);
     setLoading(false);
-  }, [supabase]);
+  }, [supabase, orgId, outletId]);
 
   useEffect(() => {
     muat();
   }, [muat]);
 
-  const menipis = products.filter((p) => p.stock <= p.min_stock);
+  const menipis = products.filter((p) => p.stock <= p.stock_min);
   const totalUnit = products.reduce((a, p) => a + p.stock, 0);
   const nilaiStok = products.reduce((a, p) => a + p.stock * Number(p.cost), 0);
   const produkTerpilih = products.find((p) => p.id === form.product_id);
@@ -53,6 +67,7 @@ export default function StokPage() {
     if (!form.product_id) return toast.error("Pilih produk");
     if (!form.qty) return toast.error("Jumlah wajib diisi");
     const { error } = await supabase.rpc("adjust_stock", {
+      p_outlet_id: outletId,
       p_product_id: form.product_id,
       p_type: form.type,
       p_qty: Number(form.qty),
@@ -60,7 +75,7 @@ export default function StokPage() {
       p_supplier_id: form.supplier_id || null,
     });
     if (error) return toast.error(error.message);
-    toast.success("Stok diperbarui");
+    toast.success(`Stok ${outlet?.name ?? ""} diperbarui`);
     setOpen(false);
     setForm({ product_id: "", type: "masuk", qty: "", note: "", supplier_id: "" });
     muat();
@@ -73,9 +88,7 @@ export default function StokPage() {
       key: "tipe",
       header: "Tipe",
       sort: (m) => m.type,
-      cell: (m) => (
-        <Badge tone={m.type === "masuk" ? "green" : m.type === "penjualan" ? "indigo" : "amber"}>{m.type}</Badge>
-      ),
+      cell: (m) => <Badge tone={m.type === "masuk" ? "green" : m.type === "penjualan" ? "indigo" : "amber"}>{m.type}</Badge>,
     },
     {
       key: "qty",
@@ -97,7 +110,7 @@ export default function StokPage() {
       <PageHeader
         eyebrow="Inventori"
         title="Manajemen Stok"
-        subtitle="Pantau nilai stok, catat barang masuk/keluar, dan lakukan stok opname."
+        subtitle={`Stok dihitung per outlet. Outlet aktif: ${outlet?.name ?? "-"} (${outlet?.code ?? "-"}).`}
         action={
           <Button data-testid="open-adjust-stock" onClick={() => setOpen(true)}>
             <ArrowDownUp className="h-4 w-4" /> Penyesuaian Stok
@@ -109,14 +122,7 @@ export default function StokPage() {
         <StatCard label="Total item" value={angka(products.length)} numeric={products.length} format={angka} icon={<Boxes className="h-4 w-4" />} />
         <StatCard label="Total unit stok" value={angka(totalUnit)} numeric={totalUnit} format={angka} icon={<PackageCheck className="h-4 w-4" />} />
         <StatCard label="Nilai stok" value={rupiah(nilaiStok)} numeric={nilaiStok} format={rupiah} hint="Berdasarkan harga beli" icon={<Coins className="h-4 w-4" />} />
-        <StatCard
-          label="Stok menipis"
-          value={angka(menipis.length)}
-          numeric={menipis.length}
-          format={angka}
-          hint="Stok <= minimum"
-          icon={<AlertTriangle className="h-4 w-4" />}
-        />
+        <StatCard label="Stok menipis" value={angka(menipis.length)} numeric={menipis.length} format={angka} hint="Stok <= minimum" icon={<AlertTriangle className="h-4 w-4" />} />
       </div>
 
       {menipis.length > 0 && (
@@ -137,7 +143,7 @@ export default function StokPage() {
                 }}
                 className="anim-up rounded-full border border-bad/25 bg-surface px-3 py-1.5 font-mono text-[11px] font-bold text-bad transition-transform duration-150 hover:-translate-y-0.5"
               >
-                {p.name} · {p.stock}/{p.min_stock}
+                {p.name} · {p.stock}/{p.stock_min}
               </button>
             ))}
           </div>
@@ -155,16 +161,16 @@ export default function StokPage() {
         searchText={(m) => `${m.products?.name ?? ""} ${m.type} ${m.note ?? ""}`}
         searchPlaceholder="Cari produk / tipe / catatan..."
         emptyText="Belum ada pergerakan stok"
-        emptyHint="Setiap penjualan dan penyesuaian stok akan tercatat di sini."
+        emptyHint="Setiap penjualan dan penyesuaian stok di outlet ini akan tercatat di sini."
         pageSize={12}
-        toolbar={<span className="text-[11px] text-dim">120 pergerakan terakhir</span>}
+        toolbar={<span className="text-[11px] text-dim">120 pergerakan terakhir · {outlet?.code}</span>}
       />
 
       <Modal
         open={open}
         onClose={() => setOpen(false)}
         title="Penyesuaian Stok"
-        subtitle="Perubahan langsung tercatat pada riwayat pergerakan"
+        subtitle={`Berlaku untuk outlet ${outlet?.name ?? "-"}`}
         testId="stock-modal"
       >
         <div className="space-y-4">

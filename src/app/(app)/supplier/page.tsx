@@ -1,5 +1,6 @@
 "use client";
 
+import { useAuth } from "@/components/AuthProvider";
 import { Button } from "@/components/ui/button";
 import { useConfirm } from "@/components/ui/confirm";
 import { DataTable, type Column } from "@/components/ui/data-table";
@@ -16,6 +17,7 @@ const kosong = { name: "", contact_person: "", phone: "", email: "", address: ""
 
 export default function SupplierPage() {
   const supabase = useMemo(() => createClient(), []);
+  const { orgId } = useAuth();
   const confirm = useConfirm();
   const [rows, setRows] = useState<Supplier[]>([]);
   const [loading, setLoading] = useState(true);
@@ -24,11 +26,16 @@ export default function SupplierPage() {
   const [form, setForm] = useState({ ...kosong });
 
   const muat = useCallback(async () => {
-    const { data, error } = await supabase.from("suppliers").select("*").order("name");
+    if (!orgId) return;
+    const { data, error } = await supabase
+      .from("suppliers")
+      .select("*")
+      .eq("organization_id", orgId)
+      .order("name");
     if (error) toast.error(error.message);
     setRows((data as Supplier[]) ?? []);
     setLoading(false);
-  }, [supabase]);
+  }, [supabase, orgId]);
 
   useEffect(() => {
     muat();
@@ -46,7 +53,7 @@ export default function SupplierPage() {
     };
     const { error } = editId
       ? await supabase.from("suppliers").update(payload).eq("id", editId)
-      : await supabase.from("suppliers").insert(payload);
+      : await supabase.from("suppliers").insert({ ...payload, organization_id: orgId });
     if (error) return toast.error(error.message);
     toast.success(editId ? "Supplier diperbarui" : "Supplier ditambahkan");
     setOpen(false);

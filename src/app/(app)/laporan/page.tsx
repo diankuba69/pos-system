@@ -1,10 +1,12 @@
 "use client";
 
+import { useAuth } from "@/components/AuthProvider";
 import { Button } from "@/components/ui/button";
 import { Segmented } from "@/components/ui/field";
 import { Empty, PageHeader, Panel, SectionTitle, Skeleton, StatCard } from "@/components/ui/misc";
 import { createClient } from "@/lib/supabase/client";
-import type { Product, Transaction } from "@/lib/types";
+import type { ProductStock, Transaction } from "@/lib/types";
+import { ratakanStok } from "@/lib/types";
 import { angka, delta, namaHari, rupiah, rupiahRingkas, tanggalPendek, unduhCsv } from "@/lib/utils";
 import {
   AlertTriangle,
@@ -45,15 +47,18 @@ const METODE_LABEL: Record<string, string> = { tunai: "Tunai", qris: "QRIS", kar
 
 export default function LaporanPage() {
   const supabase = useMemo(() => createClient(), []);
+  const { orgId, outletId, outlet, outlets } = useAuth();
+  const [lingkup, setLingkup] = useState<"outlet" | "org">("outlet");
   const [days, setDays] = useState<"7" | "14" | "30">("14");
   const [txs, setTxs] = useState<Transaction[]>([]);
   const [prevTxs, setPrevTxs] = useState<Transaction[]>([]);
-  const [products, setProducts] = useState<Product[]>([]);
+  const [products, setProducts] = useState<ProductStock[]>([]);
   const [loading, setLoading] = useState(true);
 
   const n = Number(days);
 
   const muat = useCallback(async () => {
+    if (!orgId || !outletId) return;
     setLoading(true);
     const mulai = new Date();
     mulai.setDate(mulai.getDate() - (n - 1));
@@ -61,21 +66,29 @@ export default function LaporanPage() {
     const mulaiLalu = new Date(mulai);
     mulaiLalu.setDate(mulaiLalu.getDate() - n);
 
-    const [t, p] = await Promise.all([
-      supabase
-        .from("transactions")
-        .select("*, transaction_items(*)")
-        .gte("created_at", mulaiLalu.toISOString())
-        .order("created_at"),
-      supabase.from("products").select("*"),
-    ]);
+    let tq = supabase
+      .from("transactions")
+      .select("*, transaction_items(*)")
+      .eq("organization_id", orgId!)
+      .gte("created_at", mulaiLalu.toISOString())
+      .order("created_at");
+    if (lingkup === "outlet") tq = tq.eq("outlet_id", outletId!);
+
+    let pq = supabase
+      .from("products")
+      .select("*, outlet_stock!inner(outlet_id, stock, min_stock)")
+      .eq("organization_id", orgId!)
+      .eq("is_active", true);
+    if (lingkup === "outlet") pq = pq.eq("outlet_stock.outlet_id", outletId!);
+
+    const [t, p] = await Promise.all([tq, pq]);
     if (t.error) toast.error(t.error.message);
     const semua = (t.data as Transaction[]) ?? [];
     setTxs(semua.filter((x) => new Date(x.created_at) >= mulai));
     setPrevTxs(semua.filter((x) => new Date(x.created_at) < mulai));
-    setProducts((p.data as Product[]) ?? []);
+    setProducts(ratakanStok(p.data ?? []));
     setLoading(false);
-  }, [supabase, n]);
+  }, [supabase, n, orgId, outletId, lingkup]);
 
   useEffect(() => {
     muat();
@@ -92,7 +105,7 @@ export default function LaporanPage() {
   const omzetPeriodeLalu = prevTxs.reduce((a, t) => a + Number(t.total), 0);
   const rataRata = txs.length ? omzetPeriode / txs.length : 0;
   const rataRataLalu = prevTxs.length ? omzetPeriodeLalu / prevTxs.length : 0;
-  const stokMenipis = products.filter((p) => p.stock <= p.min_stock);
+  const stokMenipis = products.filter((p) => p.stock <= p.stock_min);
   const totalItem = txs.reduce((a, t) => a + (t.transaction_items?.reduce((b, i) => b + i.qty, 0) ?? 0), 0);
 
   const harian = useMemo(() => {
@@ -184,9 +197,20 @@ export default function LaporanPage() {
       <PageHeader
         eyebrow="Analitik"
         title="Dashboard Penjualan"
-        subtitle="Bandingkan performa dengan periode sebelumnya, temukan jam tersibuk, dan pantau stok kritis."
+        subtitle={`${lingkup === "outlet" ? `Outlet ${outlet?.name ?? "-"}` : "Semua outlet"} — bandingkan performa dengan periode sebelumnya, temukan jam tersibuk, dan pantau stok kritis.`}
         action={
           <div className="flex flex-wrap items-center gap-2">
+            {outlets.length > 1 && (
+              <Segmented
+                value={lingkup}
+                onChange={setLingkup}
+                testIdPrefix="scope"
+                items={[
+                  { value: "outlet", label: outlet?.code ?? "Outlet" },
+                  { value: "org", label: "Semua outlet" },
+                ]}
+              />
+            )}
             <Segmented
               value={days}
               onChange={setDays}
@@ -432,7 +456,7 @@ export default function LaporanPage() {
                   >
                     <span className="truncate text-[13px] font-semibold text-ink">{p.name}</span>
                     <span className="shrink-0 font-mono text-[11px] font-bold tabular-nums text-bad">
-                      {p.stock}/{p.min_stock} {p.unit}
+                      {p.stock}/{p.stock_min} {p.unit}
                     </span>
                   </div>
                 ))}

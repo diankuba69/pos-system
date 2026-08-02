@@ -21,6 +21,7 @@ import {
   ShoppingCart,
   Store,
   Truck,
+  UserCog,
   Users,
   Wallet,
 } from "lucide-react";
@@ -38,6 +39,7 @@ export const NAV = [
   { href: "/supplier", label: "Supplier", icon: Truck, level: "manager", group: "Inventori" },
   { href: "/pengguna", label: "Pengguna", icon: Users, level: "admin", group: "Administrasi" },
   { href: "/pengaturan", label: "Pengaturan", icon: Settings, level: "admin", group: "Administrasi" },
+  { href: "/profil", label: "Profil Saya", icon: UserCog, level: "all", group: "Akun" },
 ] as const;
 
 function TenantSwitcher() {
@@ -236,10 +238,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
         <div className="border-t border-line p-3">
           {!collapsed && (
-            <div className="mb-3 rounded-xl border border-line bg-muted/60 px-3 py-2.5">
+            <Link
+              href="/profil"
+              data-testid="sidebar-profile-link"
+              className="mb-3 block rounded-xl border border-line bg-muted/60 px-3 py-2.5 transition-colors duration-150 hover:border-ink/30"
+            >
               <p className="truncate text-sm font-bold text-ink">{profile?.full_name ?? "Pengguna"}</p>
               <p className="mt-0.5 text-[9px] font-bold uppercase tracking-[0.2em] text-brand">{role}</p>
-            </div>
+            </Link>
           )}
           <div className={cn("flex gap-2", collapsed && "flex-col items-center")}>
             <button

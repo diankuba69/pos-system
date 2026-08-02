@@ -162,6 +162,32 @@ export default function LaporanPage() {
     return [...map.entries()].map(([name, value]) => ({ name: METODE_LABEL[name] ?? name, value }));
   }, [txs]);
 
+  const perKasir = useMemo(() => {
+    const map = new Map<string, { nama: string; tx: number; omzet: number; item: number }>();
+    txs.forEach((t) => {
+      const nama = t.cashier_name?.trim() || "Tanpa nama";
+      const cur = map.get(nama) ?? { nama, tx: 0, omzet: 0, item: 0 };
+      cur.tx += 1;
+      cur.omzet += Number(t.total);
+      cur.item += t.transaction_items?.reduce((a, i) => a + i.qty, 0) ?? 0;
+      map.set(nama, cur);
+    });
+    return [...map.values()].sort((a, b) => b.omzet - a.omzet);
+  }, [txs]);
+
+  const perOutlet = useMemo(() => {
+    const map = new Map<string, { nama: string; kode: string; tx: number; omzet: number }>();
+    txs.forEach((t) => {
+      const o = outlets.find((x) => x.id === t.outlet_id);
+      const kode = o?.code ?? "—";
+      const cur = map.get(t.outlet_id) ?? { nama: o?.name ?? "Outlet lain", kode, tx: 0, omzet: 0 };
+      cur.tx += 1;
+      cur.omzet += Number(t.total);
+      map.set(t.outlet_id, cur);
+    });
+    return [...map.values()].sort((a, b) => b.omzet - a.omzet);
+  }, [txs, outlets]);
+
   const insight = useMemo(() => {
     const out: string[] = [];
     const terbaik = [...harian].sort((a, b) => b.omzet - a.omzet)[0];
@@ -171,17 +197,26 @@ export default function LaporanPage() {
     if (jamSibuk && jamSibuk.tx > 0)
       out.push(`Jam tersibuk sekitar ${jamSibuk.jam}:00 (${jamSibuk.tx} transaksi) — siapkan kasir tambahan.`);
     if (txs.length) out.push(`Rata-rata ${(totalItem / txs.length).toFixed(1)} item per transaksi.`);
+    const kasirTop = perKasir[0];
+    if (kasirTop && perKasir.length > 1)
+      out.push(`Kasir teratas: ${kasirTop.nama} dengan ${rupiah(kasirTop.omzet)} dari ${kasirTop.tx} transaksi.`);
     const dom = [...metode].sort((a, b) => b.value - a.value)[0];
     if (dom) out.push(`Metode pembayaran dominan: ${dom.name} (${((dom.value / (omzetPeriode || 1)) * 100).toFixed(0)}% omzet).`);
     if (stokMenipis.length) out.push(`${stokMenipis.length} produk perlu restock agar penjualan tidak terhenti.`);
     return out;
-  }, [harian, perJam, txs.length, totalItem, metode, omzetPeriode, stokMenipis.length]);
+  }, [harian, perJam, txs.length, totalItem, metode, omzetPeriode, stokMenipis.length, perKasir]);
 
   const ekspor = () =>
     unduhCsv(`laporan-${days}hari.csv`, [
       ["Tanggal", "Transaksi", "Omzet"],
       ...harian.map((h) => [h.key, h.transaksi, h.omzet]),
       ["TOTAL", txs.length, omzetPeriode],
+      [],
+      ["Kasir", "Transaksi", "Item", "Omzet"],
+      ...perKasir.map((k) => [k.nama, k.tx, k.item, k.omzet]),
+      [],
+      ["Outlet", "Kode", "Transaksi", "Omzet"],
+      ...perOutlet.map((o) => [o.nama, o.kode, o.tx, o.omzet]),
     ]);
 
   const tooltipStyle = {
@@ -462,6 +497,83 @@ export default function LaporanPage() {
                 ))}
                 {stokMenipis.length > 7 && (
                   <p className="pt-1 text-xs text-dim">+{stokMenipis.length - 7} produk lainnya</p>
+                )}
+              </div>
+            )}
+          </Panel>
+
+          <Panel className="p-6 xl:col-span-2" data-testid="panel-per-kasir">
+            <SectionTitle
+              action={
+                <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-dim">
+                  {lingkup === "outlet" ? outlet?.code ?? "outlet" : "semua outlet"}
+                </span>
+              }
+            >
+              Performa per kasir
+            </SectionTitle>
+            {perKasir.length === 0 ? (
+              <Empty text="Belum ada transaksi" hint="Performa kasir muncul setelah ada penjualan." />
+            ) : (
+              <div className="space-y-2.5" data-testid="kasir-list">
+                {perKasir.map((k, i) => {
+                  const max = perKasir[0].omzet || 1;
+                  return (
+                    <div key={k.nama} style={{ animationDelay: `${i * 60}ms` }} className="anim-up" data-testid={`kasir-row-${i}`}>
+                      <div className="mb-1.5 flex items-center justify-between gap-3">
+                        <span className="flex min-w-0 items-center gap-2.5">
+                          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-muted font-display text-[10px] font-extrabold text-dim">
+                            {k.nama.slice(0, 2).toUpperCase()}
+                          </span>
+                          <span className="truncate text-[13px] font-semibold text-ink">{k.nama}</span>
+                        </span>
+                        <span className="shrink-0 font-mono text-xs tabular-nums text-dim">
+                          {angka(k.tx)} tx · {angka(k.item)} item · {rupiah(k.omzet)}
+                        </span>
+                      </div>
+                      <div className="anim-bar h-1.5 overflow-hidden rounded-full bg-muted">
+                        <span
+                          className="block h-full rounded-full bg-ok"
+                          style={{ width: `${(k.omzet / max) * 100}%`, animationDelay: `${i * 70}ms` }}
+                        />
+                      </div>
+                      <p className="mt-1 text-[11px] text-dim">
+                        Rata-rata {rupiah(k.tx ? k.omzet / k.tx : 0)} / transaksi ·{" "}
+                        {((k.omzet / (omzetPeriode || 1)) * 100).toFixed(0)}% dari omzet
+                      </p>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </Panel>
+
+          <Panel className="p-6" data-testid="panel-per-outlet">
+            <SectionTitle>Performa per outlet</SectionTitle>
+            {perOutlet.length === 0 ? (
+              <Empty text="Belum ada transaksi" />
+            ) : (
+              <div className="space-y-2" data-testid="outlet-list">
+                {perOutlet.map((o, i) => (
+                  <div
+                    key={o.kode + o.nama}
+                    style={{ animationDelay: `${i * 70}ms` }}
+                    className="anim-up flex items-center justify-between gap-3 rounded-xl border border-line px-3.5 py-2.5"
+                    data-testid={`outlet-row-${o.kode}`}
+                  >
+                    <span className="min-w-0">
+                      <span className="block truncate text-[13px] font-semibold text-ink">{o.nama}</span>
+                      <span className="font-mono text-[10px] text-dim">
+                        {o.kode} · {angka(o.tx)} transaksi
+                      </span>
+                    </span>
+                    <span className="shrink-0 font-mono text-xs font-bold tabular-nums text-ink">{rupiah(o.omzet)}</span>
+                  </div>
+                ))}
+                {lingkup === "outlet" && outlets.length > 1 && (
+                  <p className="pt-1 text-[11px] text-dim">
+                    Pilih <span className="font-semibold">Semua outlet</span> di atas untuk membandingkan seluruh outlet.
+                  </p>
                 )}
               </div>
             )}

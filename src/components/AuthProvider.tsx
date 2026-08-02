@@ -24,6 +24,7 @@ type Ctx = {
   isManager: boolean;
   loading: boolean;
   tanpaAkses: boolean;
+  wajibGantiSandi: boolean;
   pilihOrg: (id: string) => void;
   pilihOutlet: (id: string) => void;
   refresh: () => Promise<void>;
@@ -155,6 +156,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     isManager: role === "manager",
     loading,
     tanpaAkses: !loading && siapTenant && !!session && memberships.length === 0,
+    wajibGantiSandi: !!profile?.must_change_password,
     pilihOrg: (id) => {
       localStorage.setItem(ORG_KEY, id);
       setOrgId(id);

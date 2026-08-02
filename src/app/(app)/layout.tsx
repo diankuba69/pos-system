@@ -24,7 +24,7 @@ function Pemuat() {
 }
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
-  const { session, loading, role, isAdmin, isManager, tanpaAkses, orgId, signOut } = useAuth();
+  const { session, loading, role, isAdmin, isManager, tanpaAkses, wajibGantiSandi, orgId, signOut } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
   const butuhManager = MANAGER_ROUTES.some((r) => pathname.startsWith(r));
@@ -37,10 +37,14 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       router.replace("/masuk");
       return;
     }
+    if (wajibGantiSandi && pathname !== "/profil") {
+      router.replace("/profil");
+      return;
+    }
     if (role && ((butuhAdmin && !isAdmin) || (butuhManager && !bolehManager))) {
       router.replace("/kasir");
     }
-  }, [loading, session, role, isAdmin, bolehManager, butuhAdmin, butuhManager, router]);
+  }, [loading, session, role, isAdmin, bolehManager, butuhAdmin, butuhManager, wajibGantiSandi, pathname, router]);
 
   if (tanpaAkses) {
     return (
@@ -75,6 +79,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     !session ||
     !orgId ||
     !role ||
+    (wajibGantiSandi && pathname !== "/profil") ||
     (butuhAdmin && !isAdmin) ||
     (butuhManager && !bolehManager);
 

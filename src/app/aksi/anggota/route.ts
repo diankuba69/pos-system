@@ -82,6 +82,9 @@ export async function PATCH(request: Request) {
     return json("password_update_failed", 502);
   }
 
+  // Sandi hasil reset admin bersifat sementara: anggota wajib menggantinya saat login berikutnya.
+  await supabaseAdmin.from("profiles").update({ must_change_password: true }).eq("id", targetUserId);
+
   return json(null, 200, { ok: true });
 }
 
@@ -146,7 +149,7 @@ export async function POST(request: Request) {
   try {
     const { error: profileError } = await supabaseAdmin
       .from("profiles")
-      .upsert({ id: userId, full_name: fullName || email.split("@")[0], email }, { onConflict: "id" });
+      .upsert({ id: userId, full_name: fullName || email.split("@")[0], email, must_change_password: true }, { onConflict: "id" });
     if (profileError) throw new Error(`profil: ${profileError.message}`);
 
     const { error: memberError } = await supabaseAdmin

@@ -37,7 +37,8 @@ export default function MasukPage() {
     }
     await supabase.auth.getSession();
     toast.success("Berhasil masuk");
-    router.replace("/kasir");
+    const lanjut = new URLSearchParams(window.location.search).get("lanjut");
+    router.replace(lanjut && lanjut.startsWith("/") ? lanjut : "/kasir");
   };
 
   return (

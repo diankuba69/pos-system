@@ -11,7 +11,7 @@ load_dotenv("/app/.env.local")
 SB = os.environ["NEXT_PUBLIC_SUPABASE_URL"]
 KEY = os.environ["NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY"]
 SERVICE = os.environ["SUPABASE_SERVICE_ROLE_KEY"]
-APP = "https://kasir-pro-admin.preview.emergentagent.com"
+APP = "https://perubahan-terkait.preview.emergentagent.com"
 SANDI = "Demo1234!"
 
 

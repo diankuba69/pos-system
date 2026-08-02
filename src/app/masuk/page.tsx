@@ -145,10 +145,10 @@ export default function MasukPage() {
             Coba dengan akun demo admin
           </button>
 
-          <p className="mt-6 text-sm text-dim">
-            Belum punya akun?{" "}
+          <p className="mt-6 text-sm text-dim" data-testid="onboarding-hint">
+            Belum punya akun? Akun dibuat oleh admin toko Anda —{" "}
             <Link data-testid="to-register" href="/daftar" className="font-bold text-brand underline-offset-4 hover:underline">
-              Daftar di sini
+              info selengkapnya
             </Link>
           </p>
         </div>

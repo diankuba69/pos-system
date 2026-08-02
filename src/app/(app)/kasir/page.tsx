@@ -1,13 +1,28 @@
 "use client";
 
 import { Receipt } from "@/components/Receipt";
+import { BarcodeScanner } from "@/components/BarcodeScanner";
+import { useAuth } from "@/components/AuthProvider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/field";
 import { Modal } from "@/components/ui/modal";
 import { createClient } from "@/lib/supabase/client";
-import type { Category, Product, StoreSettings, Transaction } from "@/lib/types";
-import { cn, rupiah } from "@/lib/utils";
-import { Banknote, CreditCard, Minus, Plus, QrCode, Search, ShoppingCart, Trash2, X } from "lucide-react";
+import type { Category, Product, Shift, StoreSettings, Transaction } from "@/lib/types";
+import { cn, rupiah, tanggal } from "@/lib/utils";
+import {
+  Banknote,
+  CreditCard,
+  DoorOpen,
+  Minus,
+  Plus,
+  QrCode,
+  ScanLine,
+  Search,
+  ShoppingCart,
+  Trash2,
+  X,
+} from "lucide-react";
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
@@ -16,9 +31,13 @@ type Method = "tunai" | "qris" | "kartu";
 
 export default function KasirPage() {
   const supabase = useMemo(() => createClient(), []);
+  const { session } = useAuth();
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [settings, setSettings] = useState<StoreSettings | null>(null);
+  const [shift, setShift] = useState<Shift | null>(null);
+  const [modalAwal, setModalAwal] = useState("");
+  const [scanOpen, setScanOpen] = useState(false);
   const [cari, setCari] = useState("");
   const [kategori, setKategori] = useState<string>("semua");
   const [lines, setLines] = useState<Line[]>([]);
@@ -34,22 +53,34 @@ export default function KasirPage() {
   const [struk, setStruk] = useState<Transaction | null>(null);
 
   const muat = async () => {
-    const [p, c, s] = await Promise.all([
+    const [p, c, s, sh] = await Promise.all([
       supabase.from("products").select("*, categories(name)").eq("is_active", true).order("name"),
       supabase.from("categories").select("*").order("name"),
       supabase.from("store_settings").select("*").eq("id", 1).maybeSingle(),
+      session?.user
+        ? supabase.from("shifts").select("*").eq("cashier_id", session.user.id).eq("status", "buka").maybeSingle()
+        : Promise.resolve({ data: null }),
     ]);
     if (p.error) toast.error(`Gagal memuat produk: ${p.error.message}`);
     setProducts((p.data as Product[]) ?? []);
     setCategories((c.data as Category[]) ?? []);
     setSettings((s.data as StoreSettings) ?? null);
+    setShift((sh?.data as Shift) ?? null);
     setLoading(false);
   };
 
   useEffect(() => {
     muat();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [session]);
+
+  const bukaKas = async () => {
+    const { error } = await supabase.rpc("open_shift", { p_opening_cash: Number(modalAwal || 0) });
+    if (error) return toast.error(error.message);
+    toast.success("Kas dibuka, selamat bertransaksi");
+    setModalAwal("");
+    muat();
+  };
 
   const terfilter = products.filter((p) => {
     const cocokKategori = kategori === "semua" || p.category_id === kategori;
@@ -83,6 +114,24 @@ export default function KasirPage() {
     });
   };
 
+  const scanKode = (kode: string) => {
+    const q = kode.trim().toLowerCase();
+    if (!q) return;
+    const found =
+      products.find((p) => (p.sku ?? "").toLowerCase() === q) ??
+      products.find((p) => p.name.toLowerCase() === q) ??
+      (products.filter((p) => (p.sku ?? "").toLowerCase().includes(q) || p.name.toLowerCase().includes(q)).length === 1
+        ? products.filter((p) => (p.sku ?? "").toLowerCase().includes(q) || p.name.toLowerCase().includes(q))[0]
+        : undefined);
+    if (!found) {
+      toast.error(`Barcode/SKU "${kode}" tidak ditemukan`);
+      return;
+    }
+    tambah(found);
+    setCari("");
+    toast.success(`${found.name} ditambahkan`);
+  };
+
   const ubahQty = (id: string, delta: number) =>
     setLines((prev) =>
       prev
@@ -100,6 +149,10 @@ export default function KasirPage() {
 
   const bayar = async () => {
     if (lines.length === 0) return;
+    if (!shift) {
+      toast.error("Kas belum dibuka");
+      return;
+    }
     if (metode === "tunai" && dibayarNum < total) {
       toast.error("Uang dibayar kurang dari total");
       return;
@@ -138,8 +191,59 @@ export default function KasirPage() {
 
   return (
     <div className="grid h-full grid-cols-1 lg:grid-cols-12">
+      {!loading && !shift && (
+        <div
+          data-testid="shift-gate"
+          className="fixed inset-0 z-40 flex items-center justify-center bg-zinc-900/50 px-6"
+        >
+          <div className="w-full max-w-md rounded-lg border border-zinc-200 bg-white p-7">
+            <span className="flex h-10 w-10 items-center justify-center rounded-md bg-indigo-600 text-white">
+              <DoorOpen className="h-5 w-5" />
+            </span>
+            <h2 className="mt-4 font-display text-2xl font-extrabold tracking-tight text-zinc-900">Buka Kas Dulu</h2>
+            <p className="mt-2 text-sm text-zinc-500">
+              Masukkan jumlah uang tunai yang ada di kasir saat ini untuk memulai shift. Semua transaksi Anda akan
+              tercatat pada shift ini.
+            </p>
+            <div className="mt-5">
+              <span className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-500">
+                Modal awal (Rp)
+              </span>
+              <Input
+                data-testid="gate-opening-cash"
+                type="number"
+                min={0}
+                autoFocus
+                value={modalAwal}
+                onChange={(e) => setModalAwal(e.target.value)}
+                placeholder="0"
+                className="h-12 text-right font-display text-xl font-bold tabular-nums"
+              />
+            </div>
+            <Button data-testid="gate-open-shift" size="lg" className="mt-5 w-full" onClick={bukaKas}>
+              Buka Kas & Mulai Transaksi
+            </Button>
+          </div>
+        </div>
+      )}
+
       <section className="flex h-full flex-col overflow-hidden lg:col-span-8">
         <header className="no-print border-b border-zinc-200 bg-white px-6 py-4">
+          {shift && (
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-2 text-xs">
+              <span className="inline-flex items-center gap-2 rounded-full border border-green-200 bg-green-50 px-3 py-1 font-semibold text-green-700">
+                <span className="h-1.5 w-1.5 rounded-full bg-green-600" />
+                Kas terbuka · {tanggal(shift.opened_at)} · modal {rupiah(shift.opening_cash)}
+              </span>
+              <Link
+                data-testid="link-tutup-kas"
+                href="/kas"
+                className="font-semibold text-zinc-500 underline-offset-4 transition-colors duration-150 hover:text-zinc-900 hover:underline"
+              >
+                Kelola / tutup kas
+              </Link>
+            </div>
+          )}
           <div className="flex items-center gap-3">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400" />
@@ -148,10 +252,19 @@ export default function KasirPage() {
                 autoFocus
                 value={cari}
                 onChange={(e) => setCari(e.target.value)}
-                placeholder="Cari produk atau SKU..."
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    scanKode(cari);
+                  }
+                }}
+                placeholder="Cari / pindai barcode (SKU), lalu Enter..."
                 className="pl-9"
               />
             </div>
+            <Button data-testid="open-scanner" variant="outline" onClick={() => setScanOpen(true)}>
+              <ScanLine className="h-4 w-4" /> <span className="hidden sm:inline">Pindai</span>
+            </Button>
             <span className="hidden text-xs uppercase tracking-[0.16em] text-zinc-400 sm:block">
               {terfilter.length} produk
             </span>
@@ -472,6 +585,8 @@ export default function KasirPage() {
       <Modal open={!!struk} onClose={() => setStruk(null)} title="Struk Pembayaran" testId="receipt-modal">
         {struk && <Receipt tx={struk} settings={settings} />}
       </Modal>
+
+      <BarcodeScanner open={scanOpen} onClose={() => setScanOpen(false)} onDetected={scanKode} />
     </div>
   );
 }

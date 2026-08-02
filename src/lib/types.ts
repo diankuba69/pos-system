@@ -90,3 +90,20 @@ export type StockMovement = {
 };
 
 export type CartLine = { product: Product; qty: number };
+
+export type Shift = {
+  id: string;
+  cashier_id: string | null;
+  cashier_name: string | null;
+  opening_cash: number;
+  closing_cash: number | null;
+  expected_cash: number | null;
+  difference: number | null;
+  sales_cash: number;
+  sales_noncash: number;
+  tx_count: number;
+  note: string | null;
+  status: "buka" | "tutup";
+  opened_at: string;
+  closed_at: string | null;
+};

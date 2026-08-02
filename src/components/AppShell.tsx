@@ -12,6 +12,7 @@ import {
   ShoppingCart,
   Truck,
   Users,
+  Wallet,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -19,6 +20,7 @@ import { usePathname, useRouter } from "next/navigation";
 const NAV = [
   { href: "/kasir", label: "Kasir", icon: ShoppingCart, adminOnly: false },
   { href: "/transaksi", label: "Transaksi", icon: ReceiptText, adminOnly: false },
+  { href: "/kas", label: "Kas", icon: Wallet, adminOnly: false },
   { href: "/laporan", label: "Laporan", icon: BarChart3, adminOnly: true },
   { href: "/produk", label: "Produk", icon: Package, adminOnly: true },
   { href: "/stok", label: "Stok", icon: Boxes, adminOnly: true },

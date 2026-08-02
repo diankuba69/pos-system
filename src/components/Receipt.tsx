@@ -3,7 +3,7 @@
 import { Button } from "@/components/ui/button";
 import type { StoreSettings, Transaction } from "@/lib/types";
 import { rupiah, tanggal } from "@/lib/utils";
-import { Mail, MessageCircle, Printer } from "lucide-react";
+import { Download, Mail, MessageCircle, Printer } from "lucide-react";
 
 const METHOD_LABEL: Record<string, string> = { tunai: "Tunai", qris: "QRIS", kartu: "Kartu" };
 
@@ -50,6 +50,61 @@ export function Receipt({ tx, settings }: { tx: Transaction; settings: StoreSett
       )}&body=${encodeURIComponent(body)}`,
       "_blank",
     );
+  };
+
+  const unduhPdf = async () => {
+    const { jsPDF } = await import("jspdf");
+    const doc = new jsPDF({ unit: "mm", format: [80, 150 + items.length * 8] });
+    const cx = 40;
+    let y = 8;
+    const center = (text: string, size: number, bold = false) => {
+      doc.setFontSize(size);
+      doc.setFont("courier", bold ? "bold" : "normal");
+      doc.text(text, cx, y, { align: "center" });
+      y += size * 0.45;
+    };
+    const row = (left: string, right: string, bold = false) => {
+      doc.setFontSize(9);
+      doc.setFont("courier", bold ? "bold" : "normal");
+      doc.text(left, 4, y);
+      doc.text(right, 76, y, { align: "right" });
+      y += 4.2;
+    };
+    const dashed = () => {
+      doc.setLineDashPattern([1, 1], 0);
+      doc.line(4, y, 76, y);
+      doc.setLineDashPattern([], 0);
+      y += 4;
+    };
+
+    center(settings?.name ?? "KasirPro", 12, true);
+    if (settings?.address) center(settings.address, 8);
+    if (settings?.phone) center(settings.phone, 8);
+    y += 1;
+    dashed();
+    row("No.", tx.invoice_no);
+    row("Tanggal", tanggal(tx.created_at));
+    row("Kasir", tx.cashier_name ?? "-");
+    if (tx.customer_name) row("Pelanggan", tx.customer_name);
+    dashed();
+    items.forEach((i) => {
+      doc.setFontSize(9);
+      doc.setFont("courier", "normal");
+      doc.text(i.product_name, 4, y);
+      y += 4.2;
+      row(`${i.qty} x ${rupiah(i.price)}`, rupiah(i.subtotal));
+    });
+    dashed();
+    row("Subtotal", rupiah(tx.subtotal));
+    if (Number(tx.discount) > 0) row("Diskon", `-${rupiah(tx.discount)}`);
+    if (Number(tx.tax) > 0) row("Pajak", rupiah(tx.tax));
+    row("TOTAL", rupiah(tx.total), true);
+    row(METHOD_LABEL[tx.payment_method], rupiah(tx.paid_amount));
+    row("Kembalian", rupiah(tx.change_amount));
+    y += 3;
+    center(settings?.footer_note ?? "Terima kasih!", 8);
+
+    doc.save(`Struk-${tx.invoice_no}.pdf`);
   };
 
   return (
@@ -137,6 +192,9 @@ export function Receipt({ tx, settings }: { tx: Transaction; settings: StoreSett
       <div className="no-print mt-5 flex flex-wrap gap-2">
         <Button data-testid="print-receipt" variant="subtle" onClick={() => window.print()}>
           <Printer className="h-4 w-4" /> Cetak
+        </Button>
+        <Button data-testid="download-pdf" variant="subtle" onClick={unduhPdf}>
+          <Download className="h-4 w-4" /> Unduh PDF
         </Button>
         <Button data-testid="send-wa" variant="outline" onClick={kirimWa}>
           <MessageCircle className="h-4 w-4" /> Kirim WhatsApp

@@ -1,8 +1,8 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { Field, Input, Textarea } from "@/components/ui/field";
-import { PageHeader, Panel, SectionTitle, Skeleton } from "@/components/ui/misc";
+import { Field, Input, Textarea, Toggle } from "@/components/ui/field";
+import { Badge, PageHeader, Panel, SectionTitle, Skeleton } from "@/components/ui/misc";
 import { createClient } from "@/lib/supabase/client";
 import type { StoreSettings } from "@/lib/types";
 import { rupiah } from "@/lib/utils";
@@ -38,7 +38,8 @@ export default function PengaturanPage() {
         name: form.name,
         address: form.address,
         phone: form.phone,
-        tax_percent: Number(form.tax_percent || 0),
+        tax_enabled: form.tax_enabled,
+        tax_rate: Number(form.tax_rate || 0),
         footer_note: form.footer_note,
         updated_at: new Date().toISOString(),
       })
@@ -48,10 +49,14 @@ export default function PengaturanPage() {
     if (error) return toast.error(error.message);
     if (!data || data.length === 0)
       return toast.error("Gagal menyimpan: hanya admin yang boleh mengubah pengaturan toko.");
-    toast.success("Pengaturan disimpan");
+    setForm(data[0] as StoreSettings);
+    toast.success(
+      (data[0] as StoreSettings).tax_enabled ? "Pengaturan disimpan — pajak aktif" : "Pengaturan disimpan — pajak dimatikan",
+    );
   };
 
-  const pajak = Math.round((CONTOH * Number(form?.tax_percent ?? 0)) / 100);
+  const tarifAktif = form?.tax_enabled ? Number(form.tax_rate ?? 0) : 0;
+  const pajak = Math.round((CONTOH * tarifAktif) / 100);
 
   return (
     <div className="p-4 sm:p-6 lg:p-8">
@@ -95,26 +100,51 @@ export default function PengaturanPage() {
                     className="font-mono"
                   />
                 </Field>
-                <Field label="Pajak / PPN (%)" hint={`Contoh: ${rupiah(CONTOH)} → pajak ${rupiah(pajak)}`}>
+                <Field label="Catatan bawah struk">
                   <Input
-                    data-testid="setting-tax"
-                    type="number"
-                    min={0}
-                    max={100}
-                    value={form.tax_percent}
-                    onChange={(e) => setForm({ ...form, tax_percent: Number(e.target.value) })}
-                    className="text-right font-mono tabular-nums"
+                    data-testid="setting-footer"
+                    value={form.footer_note ?? ""}
+                    onChange={(e) => setForm({ ...form, footer_note: e.target.value })}
+                    placeholder="Terima kasih telah berbelanja!"
                   />
                 </Field>
               </div>
-              <Field label="Catatan bawah struk">
-                <Input
-                  data-testid="setting-footer"
-                  value={form.footer_note ?? ""}
-                  onChange={(e) => setForm({ ...form, footer_note: e.target.value })}
-                  placeholder="Terima kasih telah berbelanja!"
-                />
-              </Field>
+
+              <div className="rounded-xl border border-line bg-muted/40 p-4">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <p className="flex items-center gap-2 font-display text-sm font-extrabold text-ink">
+                      Pajak / PPN
+                      <Badge tone={form.tax_enabled ? "green" : "zinc"}>{form.tax_enabled ? "aktif" : "nonaktif"}</Badge>
+                    </p>
+                    <p className="mt-1 text-[12px] leading-relaxed text-dim">
+                      {form.tax_enabled
+                        ? "Pajak ditambahkan otomatis pada setiap transaksi baru dan tampil di struk."
+                        : "Transaksi baru tidak dikenai pajak. Tarif di bawah tetap tersimpan untuk dipakai lagi nanti."}
+                    </p>
+                  </div>
+                  <Toggle
+                    testId="setting-tax-toggle"
+                    label="Aktifkan pajak"
+                    checked={form.tax_enabled}
+                    onChange={(v) => setForm({ ...form, tax_enabled: v })}
+                  />
+                </div>
+                <div className={form.tax_enabled ? "mt-4" : "mt-4 opacity-50"}>
+                  <Field label="Tarif pajak (%)" hint={`Contoh: ${rupiah(CONTOH)} → pajak ${rupiah(pajak)}`}>
+                    <Input
+                      data-testid="setting-tax"
+                      type="number"
+                      min={0}
+                      max={100}
+                      disabled={!form.tax_enabled}
+                      value={form.tax_rate ?? 0}
+                      onChange={(e) => setForm({ ...form, tax_rate: Number(e.target.value) })}
+                      className="max-w-40 text-right font-mono tabular-nums"
+                    />
+                  </Field>
+                </div>
+              </div>
             </div>
           )}
         </Panel>
@@ -142,10 +172,12 @@ export default function PengaturanPage() {
                 <span>Subtotal</span>
                 <span>{rupiah(CONTOH)}</span>
               </div>
-              <div className="flex justify-between text-dim">
-                <span>Pajak {form?.tax_percent ?? 0}%</span>
-                <span>{rupiah(pajak)}</span>
-              </div>
+              {tarifAktif > 0 && (
+                <div className="flex justify-between text-dim">
+                  <span>Pajak {tarifAktif}%</span>
+                  <span>{rupiah(pajak)}</span>
+                </div>
+              )}
               <div className="flex justify-between border-t border-line pt-1 text-[13px] font-bold">
                 <span>TOTAL</span>
                 <span>{rupiah(CONTOH + pajak)}</span>

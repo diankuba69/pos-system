@@ -119,7 +119,8 @@ export default function KasirPage() {
   const subtotal = lines.reduce((a, l) => a + Number(l.product.price) * l.qty, 0);
   const jumlahItem = lines.reduce((a, l) => a + l.qty, 0);
   const diskonNum = Math.min(Number(diskon || 0), subtotal);
-  const pajak = Math.round(((subtotal - diskonNum) * Number(settings?.tax_percent ?? 0)) / 100);
+  const tarifPajak = settings?.tax_enabled === false ? 0 : Number(settings?.tax_percent ?? 0);
+  const pajak = Math.round(((subtotal - diskonNum) * tarifPajak) / 100);
   const total = subtotal - diskonNum + pajak;
   const dibayarNum = metode === "tunai" ? Number(dibayar || 0) : total;
   const kembalian = Math.max(dibayarNum - total, 0);
@@ -645,7 +646,7 @@ export default function KasirPage() {
             )}
             {pajak > 0 && (
               <div className="flex justify-between text-dim">
-                <span>Pajak {settings?.tax_percent}%</span>
+                <span>Pajak {tarifPajak}%</span>
                 <span>{rupiah(pajak)}</span>
               </div>
             )}

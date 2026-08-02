@@ -112,6 +112,42 @@ export function Select({
   );
 }
 
+export function Toggle({
+  checked,
+  onChange,
+  testId,
+  label,
+}: {
+  checked: boolean;
+  onChange: (v: boolean) => void;
+  testId?: string;
+  label?: string;
+}) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      aria-label={label}
+      data-testid={testId}
+      onClick={() => onChange(!checked)}
+      className={cn(
+        "relative inline-flex h-6 w-11 shrink-0 items-center rounded-full border transition-colors duration-200",
+        "focus:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:ring-offset-bg",
+        checked ? "border-brand bg-brand" : "border-line bg-muted",
+      )}
+    >
+      <span
+        className={cn(
+          "block h-4.5 w-4.5 rounded-full bg-white shadow transition-transform duration-200",
+          checked ? "translate-x-[22px]" : "translate-x-[3px]",
+        )}
+        style={{ height: 18, width: 18 }}
+      />
+    </button>
+  );
+}
+
 export function Segmented<T extends string>({
   value,
   onChange,

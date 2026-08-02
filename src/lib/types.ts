@@ -75,6 +75,8 @@ export type StoreSettings = {
   address: string | null;
   phone: string | null;
   tax_percent: number;
+  tax_enabled: boolean;
+  tax_rate: number;
   footer_note: string | null;
 };
 

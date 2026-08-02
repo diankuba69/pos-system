@@ -536,16 +536,17 @@ model products {
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
 model profiles {
-  id              String            @id @db.Uuid
-  email           String?
-  full_name       String?
-  role            String            @default("kasir")
-  is_active       Boolean           @default(true)
-  created_at      DateTime          @default(now()) @db.Timestamptz(6)
-  users           users             @relation(fields: [id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  shifts          shifts?
-  stock_movements stock_movements[]
-  transactions    transactions[]
+  id               String            @id @db.Uuid
+  email            String?
+  full_name        String?
+  role             String            @default("kasir")
+  is_active        Boolean           @default(true)
+  created_at       DateTime          @default(now()) @db.Timestamptz(6)
+  locked_device_id String?
+  users            users             @relation(fields: [id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  shifts           shifts?
+  stock_movements  stock_movements[]
+  transactions     transactions[]
 
   @@schema("public")
 }
@@ -605,6 +606,8 @@ model store_settings {
   tax_percent Decimal  @default(0) @db.Decimal(5, 2)
   footer_note String?  @default("Terima kasih atas kunjungan Anda!")
   updated_at  DateTime @default(now()) @db.Timestamptz(6)
+  tax_enabled Boolean  @default(true)
+  tax_rate    Decimal  @default(0) @db.Decimal(5, 2)
 
   @@schema("public")
 }

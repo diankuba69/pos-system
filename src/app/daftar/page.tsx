@@ -4,6 +4,7 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 import { Button } from "@/components/ui/button";
 import { Field, Input, Segmented } from "@/components/ui/field";
 import { createClient } from "@/lib/supabase/client";
+import { pesanError } from "@/lib/utils";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -48,11 +49,7 @@ export default function DaftarPage() {
     });
     setLoading(false);
     if (error) {
-      setError(
-        error.message.includes("undangan")
-          ? "Kode undangan tidak valid atau tidak cocok dengan email ini."
-          : error.message,
-      );
+      setError(pesanError(error.message));
       return;
     }
     if (data.session) {

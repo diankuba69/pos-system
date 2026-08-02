@@ -9,7 +9,7 @@ import { Modal } from "@/components/ui/modal";
 import { NumberTicker } from "@/components/ui/number-ticker";
 import { createClient } from "@/lib/supabase/client";
 import type { Shift } from "@/lib/types";
-import { cn, getDeviceId, rupiah, tanggal, waktu } from "@/lib/utils";
+import { cn, getDeviceId, pesanError, rupiah, tanggal, waktu } from "@/lib/utils";
 import { DoorOpen, LockKeyhole, Wallet } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
@@ -88,7 +88,7 @@ export default function KasPage() {
       p_opening_cash: Number(modalAwal || 0),
       p_device_id: getDeviceId(),
     });
-    if (error) return toast.error(error.message);
+    if (error) return toast.error(pesanError(error.message));
     toast.success("Kas dibuka");
     setBukaOpen(false);
     setModalAwal("");
@@ -103,7 +103,7 @@ export default function KasPage() {
       p_note: catatan || null,
       p_device_id: getDeviceId(),
     });
-    if (error) return toast.error(error.message);
+    if (error) return toast.error(pesanError(error.message));
     setHasil(data as Ringkasan);
     setTutupOpen(false);
     setUangFisik("");

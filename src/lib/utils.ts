@@ -55,6 +55,26 @@ export function unduhCsv(namaFile: string, baris: (string | number)[][]) {
   URL.revokeObjectURL(url);
 }
 
+const PETA_ERROR: [RegExp, string][] = [
+  [/Signups not allowed/i, "Pendaftaran akun baru sedang dinonaktifkan pada server. Hubungi admin toko untuk dibuatkan akses."],
+  [/Invalid login credentials/i, "Email atau kata sandi salah."],
+  [/Email not confirmed/i, "Email belum dikonfirmasi. Cek inbox Anda."],
+  [/User already registered|already been registered/i, "Email ini sudah terdaftar. Silakan masuk."],
+  [/Password should be at least/i, "Kata sandi minimal 6 karakter."],
+  [/undangan tidak valid/i, "Kode undangan tidak valid atau tidak cocok dengan email ini."],
+  [/violates foreign key constraint/i, "Data terkait tidak valid. Muat ulang halaman lalu coba lagi."],
+  [/duplicate key value|already exists/i, "Data dengan nama/kode tersebut sudah ada."],
+  [/violates row-level security/i, "Anda tidak punya izin untuk tindakan ini."],
+  [/JWT expired|invalid claim/i, "Sesi Anda berakhir. Silakan masuk kembali."],
+];
+
+/** Ubah pesan error teknis (Postgres/GoTrue) menjadi bahasa yang dimengerti kasir. */
+export function pesanError(pesan: string | null | undefined) {
+  const teks = pesan ?? "Terjadi kesalahan";
+  for (const [pola, ramah] of PETA_ERROR) if (pola.test(teks)) return ramah;
+  return teks;
+}
+
 const DEVICE_ID_KEY = "kasirpro_device_id";
 
 export function getDeviceId() {

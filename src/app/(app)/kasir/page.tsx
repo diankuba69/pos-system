@@ -11,7 +11,7 @@ import { NumberTicker } from "@/components/ui/number-ticker";
 import { createClient } from "@/lib/supabase/client";
 import type { Category, ProductStock, Shift, Transaction } from "@/lib/types";
 import { ratakanStok } from "@/lib/types";
-import { cn, getDeviceId, rupiah, tanggal, waktu } from "@/lib/utils";
+import { cn, getDeviceId, pesanError, rupiah, tanggal, waktu } from "@/lib/utils";
 import {
   Banknote,
   CreditCard,
@@ -114,7 +114,7 @@ export default function KasirPage() {
       p_opening_cash: Number(modalAwal || 0),
       p_device_id: getDeviceId(),
     });
-    if (error) return toast.error(error.message);
+    if (error) return toast.error(pesanError(error.message));
     toast.success("Kas dibuka, selamat bertransaksi");
     setModalAwal("");
     muat();
@@ -241,7 +241,7 @@ export default function KasirPage() {
         p_device_id: getDeviceId(),
       });
       if (error) {
-        toast.error(error.message);
+        toast.error(pesanError(error.message));
         if (error.message.includes("Kas belum dibuka")) {
           setBayarOpen(false);
           setShift(null);

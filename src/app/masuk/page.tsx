@@ -4,6 +4,7 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 import { Button } from "@/components/ui/button";
 import { Field, Input } from "@/components/ui/field";
 import { createClient } from "@/lib/supabase/client";
+import { pesanError } from "@/lib/utils";
 import { ArrowRight, BarChart3, ScanLine, ShieldCheck, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -31,7 +32,7 @@ export default function MasukPage() {
     const { error } = await supabase.auth.signInWithPassword({ email: email.trim().toLowerCase(), password });
     setLoading(false);
     if (error) {
-      setError(error.message === "Invalid login credentials" ? "Email atau kata sandi salah." : error.message);
+      setError(pesanError(error.message));
       return;
     }
     await supabase.auth.getSession();

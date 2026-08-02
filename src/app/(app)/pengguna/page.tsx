@@ -52,8 +52,8 @@ export default function PenggunaPage() {
         <Info className="mt-0.5 h-4 w-4 shrink-0 text-indigo-600" />
         <p className="text-sm text-indigo-900">
           Kasir baru mendaftar sendiri melalui halaman <span className="font-semibold">/daftar</span>. Setelah terdaftar,
-          admin dapat mengubah perannya di tabel ini. Kasir dibatasi hanya bisa login di 1 device — jika perlu ganti
-          device, cabut kuncinya di kolom <span className="font-semibold">Device</span>.
+          admin dapat mengubah perannya (Admin, Manager, atau Kasir) di tabel ini. Kasir dibatasi hanya bisa login di 1
+          device — jika perlu ganti device, cabut kuncinya di kolom <span className="font-semibold">Device</span>.
         </p>
       </Panel>
 

@@ -67,6 +67,7 @@ export default function KasirPage() {
   const [holds, setHolds] = useState<Hold[]>([]);
   const [holdOpen, setHoldOpen] = useState(false);
   const [bantuanOpen, setBantuanOpen] = useState(false);
+  const [mobileCartOpen, setMobileCartOpen] = useState(false);
 
   const [bayarOpen, setBayarOpen] = useState(false);
   const [metode, setMetode] = useState<Method>("tunai");
@@ -198,6 +199,7 @@ export default function KasirPage() {
     ]);
     setLines([]);
     setDiskon("");
+    setMobileCartOpen(false);
     toast.success("Transaksi ditahan. Lanjutkan kapan saja dari tombol Tahan.");
   };
 
@@ -261,6 +263,7 @@ export default function KasirPage() {
       setDibayar("");
       setPelanggan("");
       setKontak("");
+      setMobileCartOpen(false);
       toast.success("Transaksi berhasil");
       muat();
     } finally {
@@ -307,6 +310,169 @@ export default function KasirPage() {
     if (v === "clr") return setDibayar("");
     setDibayar((d) => `${d}${v}`.replace(/^0+(?=\d)/, ""));
   };
+
+  const cartBody = (
+    <>
+      <div className="flex items-center justify-between gap-2 border-b border-line px-5 py-3.5">
+        <div className="flex items-center gap-2">
+          <ShoppingCart className="h-4 w-4 text-brand" />
+          <h2 className="font-display text-sm font-extrabold uppercase tracking-[0.14em] text-ink">Keranjang</h2>
+          {jumlahItem > 0 && <Badge tone="indigo">{jumlahItem} item</Badge>}
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            data-testid="hold-list"
+            onClick={() => setHoldOpen(true)}
+            className="relative inline-flex items-center gap-1 rounded-full border border-line px-2.5 py-1 text-[11px] font-semibold text-dim transition-colors duration-150 hover:text-ink"
+          >
+            <PauseCircle className="h-3.5 w-3.5" /> Tahan
+            {holds.length > 0 && (
+              <span className="ml-0.5 rounded-full bg-accent px-1.5 font-mono text-[10px] font-bold text-zinc-900">
+                {holds.length}
+              </span>
+            )}
+          </button>
+          {lines.length > 0 && (
+            <button
+              data-testid="clear-cart"
+              onClick={() => setLines([])}
+              className="inline-flex items-center gap-1 text-[11px] font-semibold text-dim transition-colors duration-150 hover:text-bad"
+            >
+              <X className="h-3 w-3" /> Kosongkan
+            </button>
+          )}
+        </div>
+      </div>
+
+      <div className="flex-1 overflow-y-auto px-4 py-3" data-testid="cart-list">
+        {lines.length === 0 ? (
+          <div className="mt-12 px-4 text-center">
+            <span className="dot-bg mx-auto flex h-14 w-14 items-center justify-center rounded-2xl border border-line text-dim">
+              <ShoppingCart className="h-6 w-6" />
+            </span>
+            <p className="mt-4 font-display text-sm font-bold text-ink">Keranjang kosong</p>
+            <p className="mt-1 text-xs leading-relaxed text-dim">
+              Pindai barcode, tekan <Kbd>F2</Kbd> untuk cari, atau klik produk di sebelah kiri.
+            </p>
+          </div>
+        ) : (
+          lines.map((l) => (
+            <div
+              key={l.product.id}
+              data-testid={`cart-item-${l.product.id}`}
+              className="anim-up mb-2 rounded-xl border border-line bg-bg/50 p-3"
+            >
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <p className="truncate text-[13px] font-semibold text-ink">{l.product.name}</p>
+                  <p className="font-mono text-[11px] tabular-nums text-dim">
+                    {rupiah(l.product.price)} / {l.product.unit}
+                  </p>
+                </div>
+                <button
+                  data-testid={`cart-remove-${l.product.id}`}
+                  onClick={() => setLines((prev) => prev.filter((x) => x.product.id !== l.product.id))}
+                  className="shrink-0 rounded-md p-1 text-dim transition-colors duration-150 hover:bg-bad-soft hover:text-bad"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </button>
+              </div>
+              <div className="mt-2.5 flex items-center justify-between">
+                <div className="flex items-center gap-1.5">
+                  <button
+                    data-testid={`cart-minus-${l.product.id}`}
+                    onClick={() => ubahQty(l.product.id, -1)}
+                    className="flex h-8 w-8 items-center justify-center rounded-lg border border-line text-dim transition-colors duration-150 hover:border-ink/40 hover:text-ink active:scale-95"
+                  >
+                    <Minus className="h-3.5 w-3.5" />
+                  </button>
+                  <span className="w-8 text-center font-display text-sm font-extrabold tabular-nums text-ink">
+                    {l.qty}
+                  </span>
+                  <button
+                    data-testid={`cart-plus-${l.product.id}`}
+                    onClick={() => ubahQty(l.product.id, 1)}
+                    className="flex h-8 w-8 items-center justify-center rounded-lg border border-line text-dim transition-colors duration-150 hover:border-ink/40 hover:text-ink active:scale-95"
+                  >
+                    <Plus className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+                <span className="font-display text-sm font-extrabold tabular-nums text-ink">
+                  {rupiah(Number(l.product.price) * l.qty)}
+                </span>
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+
+      <div className="border-t border-line px-5 py-4">
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-dim">Diskon (Rp)</span>
+          <Input
+            data-testid="discount-input"
+            type="number"
+            min={0}
+            value={diskon}
+            onChange={(e) => setDiskon(e.target.value)}
+            placeholder="0"
+            className="h-9 w-32 text-right font-mono tabular-nums"
+          />
+        </div>
+        <div className="space-y-1.5 font-mono text-[13px] tabular-nums">
+          <div className="flex justify-between text-dim">
+            <span>Subtotal</span>
+            <span data-testid="cart-subtotal">{rupiah(subtotal)}</span>
+          </div>
+          {diskonNum > 0 && (
+            <div className="flex justify-between text-bad">
+              <span>Diskon</span>
+              <span>-{rupiah(diskonNum)}</span>
+            </div>
+          )}
+          {pajak > 0 && (
+            <div className="flex justify-between text-dim">
+              <span>Pajak {tarifPajak}%</span>
+              <span>{rupiah(pajak)}</span>
+            </div>
+          )}
+          <div className="flex items-baseline justify-between border-t border-line pt-2.5">
+            <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-dim">Total</span>
+            <NumberTicker
+              value={total}
+              format={rupiah}
+              className="font-display text-[28px] font-extrabold leading-none text-ink"
+            />
+          </div>
+          <span data-testid="cart-total" className="hidden">
+            {rupiah(total)}
+          </span>
+        </div>
+
+        <div className="mt-4 flex gap-2">
+          <Button data-testid="hold-cart" variant="outline" size="lg" className="px-4" onClick={tahan}>
+            <PauseCircle className="h-4 w-4" />
+            <span className="sr-only">Tahan</span>
+            <Kbd>F9</Kbd>
+          </Button>
+          <Button
+            data-testid="checkout-button"
+            variant="checkout"
+            size="lg"
+            shimmer
+            className="flex-1"
+            disabled={lines.length === 0}
+            onClick={bukaBayar}
+          >
+            Bayar · {rupiah(total)}
+          </Button>
+        </div>
+        <p className="mt-2 text-center text-[10px] text-dim">
+          <Kbd>F12</Kbd> atau <Kbd>Ctrl</Kbd>+<Kbd>Enter</Kbd> untuk bayar cepat
+        </p>
+      </div>
+    </>
+  );
 
   return (
     <div className="grid h-full grid-cols-1 lg:grid-cols-12">
@@ -435,7 +601,7 @@ export default function KasirPage() {
           </div>
         </header>
 
-        <div className="flex-1 overflow-y-auto p-4 sm:p-6">
+        <div className="flex-1 overflow-y-auto p-4 pb-24 sm:p-6 lg:pb-6">
           {loading ? (
             <div className="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-4">
               {Array.from({ length: 8 }).map((_, i) => (
@@ -538,166 +704,53 @@ export default function KasirPage() {
         </div>
       </section>
 
-      <aside className="no-print flex h-full flex-col border-line bg-surface lg:col-span-4 lg:border-l">
-        <div className="flex items-center justify-between gap-2 border-b border-line px-5 py-3.5">
-          <div className="flex items-center gap-2">
-            <ShoppingCart className="h-4 w-4 text-brand" />
-            <h2 className="font-display text-sm font-extrabold uppercase tracking-[0.14em] text-ink">Keranjang</h2>
-            {jumlahItem > 0 && <Badge tone="indigo">{jumlahItem} item</Badge>}
-          </div>
-          <div className="flex items-center gap-2">
-            <button
-              data-testid="hold-list"
-              onClick={() => setHoldOpen(true)}
-              className="relative inline-flex items-center gap-1 rounded-full border border-line px-2.5 py-1 text-[11px] font-semibold text-dim transition-colors duration-150 hover:text-ink"
-            >
-              <PauseCircle className="h-3.5 w-3.5" /> Tahan
-              {holds.length > 0 && (
-                <span className="ml-0.5 rounded-full bg-accent px-1.5 font-mono text-[10px] font-bold text-zinc-900">
-                  {holds.length}
-                </span>
-              )}
-            </button>
-            {lines.length > 0 && (
-              <button
-                data-testid="clear-cart"
-                onClick={() => setLines([])}
-                className="inline-flex items-center gap-1 text-[11px] font-semibold text-dim transition-colors duration-150 hover:text-bad"
-              >
-                <X className="h-3 w-3" /> Kosongkan
-              </button>
-            )}
-          </div>
-        </div>
-
-        <div className="flex-1 overflow-y-auto px-4 py-3" data-testid="cart-list">
-          {lines.length === 0 ? (
-            <div className="mt-12 px-4 text-center">
-              <span className="dot-bg mx-auto flex h-14 w-14 items-center justify-center rounded-2xl border border-line text-dim">
-                <ShoppingCart className="h-6 w-6" />
-              </span>
-              <p className="mt-4 font-display text-sm font-bold text-ink">Keranjang kosong</p>
-              <p className="mt-1 text-xs leading-relaxed text-dim">
-                Pindai barcode, tekan <Kbd>F2</Kbd> untuk cari, atau klik produk di sebelah kiri.
-              </p>
-            </div>
-          ) : (
-            lines.map((l) => (
-              <div
-                key={l.product.id}
-                data-testid={`cart-item-${l.product.id}`}
-                className="anim-up mb-2 rounded-xl border border-line bg-bg/50 p-3"
-              >
-                <div className="flex items-start justify-between gap-2">
-                  <div className="min-w-0">
-                    <p className="truncate text-[13px] font-semibold text-ink">{l.product.name}</p>
-                    <p className="font-mono text-[11px] tabular-nums text-dim">
-                      {rupiah(l.product.price)} / {l.product.unit}
-                    </p>
-                  </div>
-                  <button
-                    data-testid={`cart-remove-${l.product.id}`}
-                    onClick={() => setLines((prev) => prev.filter((x) => x.product.id !== l.product.id))}
-                    className="shrink-0 rounded-md p-1 text-dim transition-colors duration-150 hover:bg-bad-soft hover:text-bad"
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </button>
-                </div>
-                <div className="mt-2.5 flex items-center justify-between">
-                  <div className="flex items-center gap-1.5">
-                    <button
-                      data-testid={`cart-minus-${l.product.id}`}
-                      onClick={() => ubahQty(l.product.id, -1)}
-                      className="flex h-8 w-8 items-center justify-center rounded-lg border border-line text-dim transition-colors duration-150 hover:border-ink/40 hover:text-ink active:scale-95"
-                    >
-                      <Minus className="h-3.5 w-3.5" />
-                    </button>
-                    <span className="w-8 text-center font-display text-sm font-extrabold tabular-nums text-ink">
-                      {l.qty}
-                    </span>
-                    <button
-                      data-testid={`cart-plus-${l.product.id}`}
-                      onClick={() => ubahQty(l.product.id, 1)}
-                      className="flex h-8 w-8 items-center justify-center rounded-lg border border-line text-dim transition-colors duration-150 hover:border-ink/40 hover:text-ink active:scale-95"
-                    >
-                      <Plus className="h-3.5 w-3.5" />
-                    </button>
-                  </div>
-                  <span className="font-display text-sm font-extrabold tabular-nums text-ink">
-                    {rupiah(Number(l.product.price) * l.qty)}
-                  </span>
-                </div>
-              </div>
-            ))
-          )}
-        </div>
-
-        <div className="border-t border-line px-5 py-4">
-          <div className="mb-3 flex items-center justify-between gap-3">
-            <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-dim">Diskon (Rp)</span>
-            <Input
-              data-testid="discount-input"
-              type="number"
-              min={0}
-              value={diskon}
-              onChange={(e) => setDiskon(e.target.value)}
-              placeholder="0"
-              className="h-9 w-32 text-right font-mono tabular-nums"
-            />
-          </div>
-          <div className="space-y-1.5 font-mono text-[13px] tabular-nums">
-            <div className="flex justify-between text-dim">
-              <span>Subtotal</span>
-              <span data-testid="cart-subtotal">{rupiah(subtotal)}</span>
-            </div>
-            {diskonNum > 0 && (
-              <div className="flex justify-between text-bad">
-                <span>Diskon</span>
-                <span>-{rupiah(diskonNum)}</span>
-              </div>
-            )}
-            {pajak > 0 && (
-              <div className="flex justify-between text-dim">
-                <span>Pajak {tarifPajak}%</span>
-                <span>{rupiah(pajak)}</span>
-              </div>
-            )}
-            <div className="flex items-baseline justify-between border-t border-line pt-2.5">
-              <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-dim">Total</span>
-              <NumberTicker
-                value={total}
-                format={rupiah}
-                className="font-display text-[28px] font-extrabold leading-none text-ink"
-              />
-            </div>
-            <span data-testid="cart-total" className="hidden">
-              {rupiah(total)}
-            </span>
-          </div>
-
-          <div className="mt-4 flex gap-2">
-            <Button data-testid="hold-cart" variant="outline" size="lg" className="px-4" onClick={tahan}>
-              <PauseCircle className="h-4 w-4" />
-              <span className="sr-only">Tahan</span>
-              <Kbd>F9</Kbd>
-            </Button>
-            <Button
-              data-testid="checkout-button"
-              variant="checkout"
-              size="lg"
-              shimmer
-              className="flex-1"
-              disabled={lines.length === 0}
-              onClick={bukaBayar}
-            >
-              Bayar · {rupiah(total)}
-            </Button>
-          </div>
-          <p className="mt-2 text-center text-[10px] text-dim">
-            <Kbd>F12</Kbd> atau <Kbd>Ctrl</Kbd>+<Kbd>Enter</Kbd> untuk bayar cepat
-          </p>
-        </div>
+      <aside className="no-print hidden h-full flex-col border-line bg-surface lg:col-span-4 lg:flex lg:border-l">
+        {!mobileCartOpen && cartBody}
       </aside>
+
+      {lines.length > 0 && !mobileCartOpen && (
+        <button
+          data-testid="mobile-cart-bar"
+          onClick={() => setMobileCartOpen(true)}
+          className="no-print fixed inset-x-3 bottom-[70px] z-50 flex items-center justify-between gap-3 rounded-2xl border border-line bg-ink px-4 py-3 text-bg shadow-[var(--shadow-pop)] lg:hidden"
+        >
+          <span className="flex items-center gap-2 text-sm font-bold">
+            <ShoppingCart className="h-4 w-4" />
+            {jumlahItem} item
+          </span>
+          <span className="font-display text-base font-extrabold tabular-nums">{rupiah(total)}</span>
+          <span className="rounded-full bg-bg/15 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.1em]">
+            Lihat keranjang
+          </span>
+        </button>
+      )}
+
+      {mobileCartOpen && (
+        <div
+          data-testid="mobile-cart-overlay"
+          className="no-print fixed inset-0 z-[65] flex flex-col justify-end bg-zinc-950/45 backdrop-blur-[3px] lg:hidden"
+          onMouseDown={(e) => {
+            if (e.target === e.currentTarget) setMobileCartOpen(false);
+          }}
+        >
+          <div
+            data-testid="mobile-cart-sheet"
+            className="anim-pop flex max-h-[85vh] flex-col rounded-t-2xl border-t border-line bg-surface"
+          >
+            <div className="relative flex items-center justify-center border-b border-line py-2.5">
+              <span className="h-1 w-10 rounded-full bg-line" />
+              <button
+                data-testid="mobile-cart-close"
+                onClick={() => setMobileCartOpen(false)}
+                className="absolute right-3 top-1.5 rounded-lg p-1.5 text-dim transition-colors duration-150 hover:bg-muted hover:text-ink"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            {cartBody}
+          </div>
+        </div>
+      )}
 
       <Modal
         open={bayarOpen}

@@ -1,8 +1,10 @@
 -- Modul "Reset Pabrik": kosongkan data per-outlet atau seluruh organisasi.
--- SECURITY DEFINER agar bisa hapus lintas tabel yang dibatasi RLS, tapi tetap
--- memverifikasi sendiri bahwa auth.uid() adalah admin aktif organisasi terkait.
+-- SECURITY DEFINER agar bisa hapus lintas tabel yang dibatasi RLS. Otorisasi admin
+-- sudah diverifikasi di server route (/aksi/reset-pabrik) menggunakan service-role key,
+-- jadi caller diteruskan sebagai parameter (bukan auth.uid(), yang null saat dipanggil
+-- lewat service-role) dan dicek ulang di sini sebagai lapisan pertahanan kedua.
 
-create or replace function public.factory_reset_outlet(p_outlet_id uuid)
+create or replace function public.factory_reset_outlet(p_outlet_id uuid, p_caller_user_id uuid)
 returns void
 language plpgsql
 security definer
@@ -18,7 +20,7 @@ begin
   end if;
 
   select role into v_role from public.organization_memberships
-    where organization_id = v_org and user_id = auth.uid() and is_active = true;
+    where organization_id = v_org and user_id = p_caller_user_id and is_active = true;
   if v_role is distinct from 'admin' then
     raise exception 'Hanya admin organisasi yang dapat melakukan reset';
   end if;
@@ -34,11 +36,11 @@ begin
 end;
 $$;
 
-grant execute on function public.factory_reset_outlet(uuid) to authenticated;
+grant execute on function public.factory_reset_outlet(uuid, uuid) to service_role;
 
 -- Mengembalikan daftar anggota lain yang keanggotaannya di organisasi ini dicabut,
 -- beserta jumlah organisasi LAIN yang masih mereka ikuti (0 = akun auth-nya boleh dihapus total).
-create or replace function public.factory_reset_organization(p_organization_id uuid)
+create or replace function public.factory_reset_organization(p_organization_id uuid, p_caller_user_id uuid)
 returns table(removed_user_id uuid, other_orgs_count int)
 language plpgsql
 security definer
@@ -48,7 +50,7 @@ declare
   v_role text;
 begin
   select role into v_role from public.organization_memberships
-    where organization_id = p_organization_id and user_id = auth.uid() and is_active = true;
+    where organization_id = p_organization_id and user_id = p_caller_user_id and is_active = true;
   if v_role is distinct from 'admin' then
     raise exception 'Hanya admin organisasi yang dapat melakukan reset';
   end if;
@@ -71,17 +73,17 @@ begin
     select om.user_id,
       (select count(*)::int from public.organization_memberships om2 where om2.user_id = om.user_id) - 1
     from public.organization_memberships om
-    where om.organization_id = p_organization_id and om.user_id <> auth.uid();
+    where om.organization_id = p_organization_id and om.user_id <> p_caller_user_id;
 
   delete from public.organization_memberships
-    where organization_id = p_organization_id and user_id <> auth.uid();
+    where organization_id = p_organization_id and user_id <> p_caller_user_id;
 
   update public.organization_memberships
     set locked_device_id = null
-    where organization_id = p_organization_id and user_id = auth.uid();
+    where organization_id = p_organization_id and user_id = p_caller_user_id;
 end;
 $$;
 
-grant execute on function public.factory_reset_organization(uuid) to authenticated;
+grant execute on function public.factory_reset_organization(uuid, uuid) to service_role;
 
 notify pgrst, 'reload schema';

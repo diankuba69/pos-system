@@ -9,16 +9,17 @@ import { Modal } from "@/components/ui/modal";
 import { createClient } from "@/lib/supabase/client";
 import type { Organization, Outlet } from "@/lib/types";
 import { rupiah } from "@/lib/utils";
-import { Building2, Plus, Save, Store, Trash2 } from "lucide-react";
+import { AlertTriangle, Building2, Plus, RotateCcw, Save, Store, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
 const CONTOH = 25000;
+const FRASA_RESET_ORG = "HAPUS SEMUA DATA";
 
 export default function PengaturanPage() {
   const supabase = useMemo(() => createClient(), []);
   const confirm = useConfirm();
-  const { orgId, outletId, refresh } = useAuth();
+  const { orgId, outletId, refresh, isAdmin } = useAuth();
   const [org, setOrg] = useState<Organization | null>(null);
   const [outlets, setOutlets] = useState<Outlet[]>([]);
   const [pilih, setPilih] = useState<string | null>(null);
@@ -26,6 +27,12 @@ export default function PengaturanPage() {
   const [saving, setSaving] = useState(false);
   const [barModal, setBarModal] = useState(false);
   const [baru, setBaru] = useState({ name: "", code: "" });
+  const [resetOutletOpen, setResetOutletOpen] = useState(false);
+  const [resetOutletText, setResetOutletText] = useState("");
+  const [resettingOutlet, setResettingOutlet] = useState(false);
+  const [resetOrgOpen, setResetOrgOpen] = useState(false);
+  const [resetOrgText, setResetOrgText] = useState("");
+  const [resettingOrg, setResettingOrg] = useState(false);
 
   const muat = useCallback(async () => {
     if (!orgId) return;
@@ -116,6 +123,57 @@ export default function PengaturanPage() {
     toast.success("Outlet dihapus");
     setPilih(null);
     muat();
+  };
+
+  const token = async () => {
+    const { data } = await supabase.auth.getSession();
+    return data.session?.access_token ?? null;
+  };
+
+  const resetOutlet = async () => {
+    if (!form || !orgId) return;
+    if (resetOutletText.trim().toUpperCase() !== form.code.toUpperCase()) return toast.error("Kode outlet tidak cocok");
+    setResettingOutlet(true);
+    const jwt = await token();
+    if (!jwt) {
+      setResettingOutlet(false);
+      return toast.error("Sesi berakhir, silakan masuk kembali");
+    }
+    const res = await fetch("/aksi/reset-pabrik", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${jwt}` },
+      body: JSON.stringify({ organizationId: orgId, scope: "outlet", outletId: form.id }),
+    });
+    const data = await res.json().catch(() => ({}));
+    setResettingOutlet(false);
+    if (!res.ok) return toast.error(data.message ?? "Gagal reset outlet");
+    toast.success(`Data outlet "${form.name}" berhasil dikosongkan`);
+    setResetOutletOpen(false);
+    setResetOutletText("");
+    window.location.reload();
+  };
+
+  const resetOrganization = async () => {
+    if (!orgId) return;
+    if (resetOrgText.trim().toUpperCase() !== FRASA_RESET_ORG) return toast.error("Frasa konfirmasi tidak cocok");
+    setResettingOrg(true);
+    const jwt = await token();
+    if (!jwt) {
+      setResettingOrg(false);
+      return toast.error("Sesi berakhir, silakan masuk kembali");
+    }
+    const res = await fetch("/aksi/reset-pabrik", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${jwt}` },
+      body: JSON.stringify({ organizationId: orgId, scope: "organization" }),
+    });
+    const data = await res.json().catch(() => ({}));
+    setResettingOrg(false);
+    if (!res.ok) return toast.error(data.message ?? "Gagal reset organisasi");
+    toast.success("Semua data organisasi berhasil dikosongkan");
+    setResetOrgOpen(false);
+    setResetOrgText("");
+    window.location.reload();
   };
 
   const tarifAktif = form?.tax_enabled ? Number(form.tax_rate ?? 0) : 0;
@@ -307,6 +365,136 @@ export default function PengaturanPage() {
           </div>
         </Panel>
       </div>
+
+      {isAdmin && (
+        <Panel className="mt-5 border-bad/30 bg-bad-soft/15 p-6" data-testid="danger-zone">
+          <SectionTitle>
+            <span className="flex items-center gap-2 text-bad">
+              <AlertTriangle className="h-3.5 w-3.5" /> Zona Berbahaya
+            </span>
+          </SectionTitle>
+          <p className="mb-4 text-[12px] leading-relaxed text-dim">
+            Tindakan di bawah ini bersifat permanen dan tidak bisa dibatalkan. Ekspor laporan yang dibutuhkan sebelum lanjut.
+          </p>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="rounded-xl border border-line bg-surface p-4">
+              <p className="font-display text-sm font-extrabold text-ink">Reset data outlet ini</p>
+              <p className="mt-1 text-[12px] leading-relaxed text-dim">
+                Mengosongkan transaksi, shift, dan riwayat stok outlet <strong>{form?.name ?? "-"}</strong>. Produk, kategori, dan anggota tim tidak terhapus.
+              </p>
+              <Button
+                variant="danger"
+                size="sm"
+                className="mt-3"
+                data-testid="open-reset-outlet"
+                disabled={!form}
+                onClick={() => setResetOutletOpen(true)}
+              >
+                <RotateCcw className="h-3.5 w-3.5" /> Reset Outlet Ini
+              </Button>
+            </div>
+            <div className="rounded-xl border border-line bg-surface p-4">
+              <p className="font-display text-sm font-extrabold text-ink">Reset seluruh organisasi</p>
+              <p className="mt-1 text-[12px] leading-relaxed text-dim">
+                Menghapus semua produk, kategori, supplier, outlet, dan transaksi, serta menghapus permanen semua akun anggota tim lain. Hanya akun Anda yang tersisa.
+              </p>
+              <Button variant="danger" size="sm" className="mt-3" data-testid="open-reset-organization" onClick={() => setResetOrgOpen(true)}>
+                <Trash2 className="h-3.5 w-3.5" /> Reset Semua Data
+              </Button>
+            </div>
+          </div>
+        </Panel>
+      )}
+
+      <Modal
+        open={resetOutletOpen}
+        onClose={() => {
+          setResetOutletOpen(false);
+          setResetOutletText("");
+        }}
+        title={`Reset outlet "${form?.name ?? ""}"?`}
+        subtitle="Tindakan permanen, tidak bisa dibatalkan"
+        testId="reset-outlet-modal"
+      >
+        <div className="space-y-4">
+          <p className="text-sm leading-relaxed text-dim">
+            Seluruh transaksi, shift, dan riwayat stok outlet ini akan dihapus permanen. Stok produk akan dinolkan dan nomor struk direset ke 0. Produk, kategori, dan anggota tim tetap ada.
+          </p>
+          <Field label={`Ketik kode outlet "${form?.code ?? ""}" untuk konfirmasi`}>
+            <Input
+              data-testid="reset-outlet-confirm-input"
+              value={resetOutletText}
+              onChange={(e) => setResetOutletText(e.target.value)}
+              placeholder={form?.code ?? ""}
+              className="font-mono uppercase"
+            />
+          </Field>
+          <div className="flex justify-end gap-2 border-t border-line pt-4">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setResetOutletOpen(false);
+                setResetOutletText("");
+              }}
+            >
+              Batal
+            </Button>
+            <Button
+              variant="danger"
+              data-testid="confirm-reset-outlet"
+              disabled={resettingOutlet || resetOutletText.trim().toUpperCase() !== (form?.code ?? "").toUpperCase()}
+              onClick={resetOutlet}
+            >
+              {resettingOutlet ? "Memproses..." : "Ya, Reset Outlet Ini"}
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal
+        open={resetOrgOpen}
+        onClose={() => {
+          setResetOrgOpen(false);
+          setResetOrgText("");
+        }}
+        title="Reset seluruh organisasi?"
+        subtitle="Tindakan permanen, tidak bisa dibatalkan"
+        testId="reset-organization-modal"
+      >
+        <div className="space-y-4">
+          <p className="text-sm leading-relaxed text-dim">
+            Semua produk, kategori, supplier, outlet, transaksi, dan shift akan dihapus permanen. Semua akun anggota tim lain (manager/kasir) juga akan dihapus permanen. Hanya akun Anda yang tersisa.
+          </p>
+          <Field label={`Ketik "${FRASA_RESET_ORG}" untuk konfirmasi`}>
+            <Input
+              data-testid="reset-organization-confirm-input"
+              value={resetOrgText}
+              onChange={(e) => setResetOrgText(e.target.value)}
+              placeholder={FRASA_RESET_ORG}
+              className="font-mono uppercase"
+            />
+          </Field>
+          <div className="flex justify-end gap-2 border-t border-line pt-4">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setResetOrgOpen(false);
+                setResetOrgText("");
+              }}
+            >
+              Batal
+            </Button>
+            <Button
+              variant="danger"
+              data-testid="confirm-reset-organization"
+              disabled={resettingOrg || resetOrgText.trim().toUpperCase() !== FRASA_RESET_ORG}
+              onClick={resetOrganization}
+            >
+              {resettingOrg ? "Memproses..." : "Ya, Hapus Semua Data"}
+            </Button>
+          </div>
+        </div>
+      </Modal>
 
       <Modal open={barModal} onClose={() => setBarModal(false)} title="Outlet Baru" subtitle="Cabang baru dengan stok & nomor struk sendiri" testId="outlet-modal">
         <div className="space-y-4">

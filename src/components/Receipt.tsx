@@ -112,15 +112,15 @@ export function Receipt({ tx, settings }: { tx: Transaction; settings: StoreSett
       <div
         id="struk-cetak"
         data-testid="receipt-body"
-        className="mx-auto max-w-xs border border-dashed border-zinc-300 bg-white p-5 font-mono text-[12px] leading-relaxed text-zinc-900"
+        className="mx-auto max-w-xs rounded-xl border border-dashed border-line bg-surface p-5 font-mono text-[12px] leading-relaxed text-ink"
       >
         <div className="text-center">
           <p className="font-display text-sm font-extrabold uppercase tracking-wide">{settings?.name ?? "KasirPro"}</p>
-          {settings?.address && <p className="text-[11px] text-zinc-600">{settings.address}</p>}
-          {settings?.phone && <p className="text-[11px] text-zinc-600">{settings.phone}</p>}
+          {settings?.address && <p className="text-[11px] text-dim">{settings.address}</p>}
+          {settings?.phone && <p className="text-[11px] text-dim">{settings.phone}</p>}
         </div>
 
-        <div className="mt-3 border-t border-dashed border-zinc-300 pt-2 text-[11px]">
+        <div className="mt-3 border-t border-dashed border-line pt-2 text-[11px]">
           <div className="flex justify-between">
             <span>No.</span>
             <span data-testid="receipt-invoice">{tx.invoice_no}</span>
@@ -141,11 +141,11 @@ export function Receipt({ tx, settings }: { tx: Transaction; settings: StoreSett
           )}
         </div>
 
-        <div className="mt-2 border-t border-dashed border-zinc-300 pt-2">
+        <div className="mt-2 border-t border-dashed border-line pt-2">
           {items.map((i) => (
             <div key={i.id} className="mb-1">
               <p>{i.product_name}</p>
-              <div className="flex justify-between tabular-nums text-zinc-700">
+              <div className="flex justify-between tabular-nums text-dim">
                 <span>
                   {i.qty} x {rupiah(i.price)}
                 </span>
@@ -155,7 +155,7 @@ export function Receipt({ tx, settings }: { tx: Transaction; settings: StoreSett
           ))}
         </div>
 
-        <div className="mt-2 space-y-0.5 border-t border-dashed border-zinc-300 pt-2 tabular-nums">
+        <div className="mt-2 space-y-0.5 border-t border-dashed border-line pt-2 tabular-nums">
           <div className="flex justify-between">
             <span>Subtotal</span>
             <span>{rupiah(tx.subtotal)}</span>
@@ -172,7 +172,7 @@ export function Receipt({ tx, settings }: { tx: Transaction; settings: StoreSett
               <span>{rupiah(tx.tax)}</span>
             </div>
           )}
-          <div className="flex justify-between border-t border-zinc-300 pt-1 text-sm font-bold">
+          <div className="flex justify-between border-t border-line pt-1 text-sm font-bold">
             <span>TOTAL</span>
             <span data-testid="receipt-total">{rupiah(tx.total)}</span>
           </div>
@@ -186,7 +186,7 @@ export function Receipt({ tx, settings }: { tx: Transaction; settings: StoreSett
           </div>
         </div>
 
-        <p className="mt-4 text-center text-[11px] text-zinc-600">{settings?.footer_note ?? "Terima kasih!"}</p>
+        <p className="mt-4 text-center text-[11px] text-dim">{settings?.footer_note ?? "Terima kasih!"}</p>
       </div>
 
       <div className="no-print mt-5 flex flex-wrap gap-2">

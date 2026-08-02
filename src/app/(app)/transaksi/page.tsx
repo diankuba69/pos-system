@@ -2,34 +2,45 @@
 
 import { Receipt } from "@/components/Receipt";
 import { Button } from "@/components/ui/button";
+import { DataTable, type Column } from "@/components/ui/data-table";
 import { Input } from "@/components/ui/field";
-import { Modal } from "@/components/ui/modal";
-import { Badge, Empty, PageHeader, Panel, Spinner, StatCard } from "@/components/ui/misc";
+import { Badge, PageHeader, StatCard } from "@/components/ui/misc";
+import { Sheet } from "@/components/ui/modal";
 import { createClient } from "@/lib/supabase/client";
 import type { StoreSettings, Transaction } from "@/lib/types";
-import { angka, rupiah, tanggal } from "@/lib/utils";
-import { Eye, ReceiptText, Wallet } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { angka, cn, rupiah, tanggal, unduhCsv, waktu } from "@/lib/utils";
+import { Download, Package, ReceiptText, Wallet } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
-// Tanggal & batas periode dihitung memakai zona waktu lokal (WIB), bukan UTC.
-const hariIni = () => {
+const iso = (d: Date) =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+const hariIni = () => iso(new Date());
+const geser = (hari: number) => {
   const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  d.setDate(d.getDate() - hari);
+  return iso(d);
 };
 const awalHari = (tgl: string) => new Date(`${tgl}T00:00:00`).toISOString();
 const akhirHari = (tgl: string) => new Date(`${tgl}T23:59:59.999`).toISOString();
+
+const PRESET = [
+  { label: "Hari ini", from: hariIni, to: hariIni },
+  { label: "7 hari", from: () => geser(6), to: hariIni },
+  { label: "30 hari", from: () => geser(29), to: hariIni },
+  { label: "Bulan ini", from: () => iso(new Date(new Date().getFullYear(), new Date().getMonth(), 1)), to: hariIni },
+];
 
 export default function TransaksiPage() {
   const supabase = useMemo(() => createClient(), []);
   const [rows, setRows] = useState<Transaction[]>([]);
   const [settings, setSettings] = useState<StoreSettings | null>(null);
   const [loading, setLoading] = useState(true);
-  const [dari, setDari] = useState(hariIni());
+  const [dari, setDari] = useState(geser(6));
   const [sampai, setSampai] = useState(hariIni());
   const [detail, setDetail] = useState<Transaction | null>(null);
 
-  const muat = async () => {
+  const muat = useCallback(async () => {
     setLoading(true);
     const [t, s] = await Promise.all([
       supabase
@@ -44,88 +55,170 @@ export default function TransaksiPage() {
     setRows((t.data as Transaction[]) ?? []);
     setSettings((s.data as StoreSettings) ?? null);
     setLoading(false);
-  };
+  }, [supabase, dari, sampai]);
 
   useEffect(() => {
     muat();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dari, sampai]);
+  }, [muat]);
 
   const omzet = rows.reduce((a, t) => a + Number(t.total), 0);
   const item = rows.reduce((a, t) => a + (t.transaction_items?.reduce((b, i) => b + i.qty, 0) ?? 0), 0);
+  const aktifPreset = PRESET.find((p) => p.from() === dari && p.to() === sampai)?.label;
+
+  const columns: Column<Transaction>[] = [
+    {
+      key: "invoice",
+      header: "No. Struk",
+      sort: (t) => t.invoice_no,
+      cell: (t) => (
+        <div>
+          <p className="font-mono text-[13px] font-bold text-ink">{t.invoice_no}</p>
+          <p className="text-[11px] text-dim">{waktu(t.created_at)}</p>
+        </div>
+      ),
+    },
+    { key: "waktu", header: "Waktu", sort: (t) => t.created_at, cell: (t) => <span className="text-dim">{tanggal(t.created_at)}</span> },
+    { key: "kasir", header: "Kasir", sort: (t) => t.cashier_name ?? "", cell: (t) => <span className="text-dim">{t.cashier_name ?? "-"}</span> },
+    {
+      key: "item",
+      header: "Item",
+      align: "right",
+      sort: (t) => t.transaction_items?.reduce((a, i) => a + i.qty, 0) ?? 0,
+      cell: (t) => (
+        <span className="font-mono tabular-nums text-dim">{t.transaction_items?.reduce((a, i) => a + i.qty, 0) ?? 0}</span>
+      ),
+    },
+    {
+      key: "metode",
+      header: "Metode",
+      sort: (t) => t.payment_method,
+      cell: (t) => <Badge tone={t.payment_method === "tunai" ? "green" : "indigo"}>{t.payment_method}</Badge>,
+    },
+    {
+      key: "total",
+      header: "Total",
+      align: "right",
+      sort: (t) => Number(t.total),
+      cell: (t) => <span className="font-display text-sm font-extrabold tabular-nums text-ink">{rupiah(t.total)}</span>,
+    },
+  ];
+
+  const ekspor = () =>
+    unduhCsv(`transaksi-${dari}_${sampai}.csv`, [
+      ["Invoice", "Waktu", "Kasir", "Item", "Metode", "Subtotal", "Diskon", "Pajak", "Total"],
+      ...rows.map((t) => [
+        t.invoice_no,
+        tanggal(t.created_at),
+        t.cashier_name ?? "-",
+        t.transaction_items?.reduce((a, i) => a + i.qty, 0) ?? 0,
+        t.payment_method,
+        t.subtotal,
+        t.discount,
+        t.tax,
+        t.total,
+      ]),
+    ]);
 
   return (
-    <div className="p-8">
-      <PageHeader title="Transaksi" subtitle="Riwayat penjualan beserta struk yang bisa dicetak atau dikirim." />
+    <div className="p-4 sm:p-6 lg:p-8">
+      <PageHeader
+        eyebrow="Operasional"
+        title="Transaksi"
+        subtitle="Riwayat penjualan beserta struk yang bisa dicetak, diunduh, atau dikirim ke pelanggan."
+        action={
+          <Button variant="outline" data-testid="export-transaksi" onClick={ekspor} disabled={rows.length === 0}>
+            <Download className="h-4 w-4" /> Ekspor CSV
+          </Button>
+        }
+      />
 
-      <div className="mb-6 flex flex-wrap items-end gap-3">
-        <label>
-          <span className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-500">Dari</span>
-          <Input data-testid="filter-from" type="date" value={dari} onChange={(e) => setDari(e.target.value)} className="w-44" />
-        </label>
-        <label>
-          <span className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-500">Sampai</span>
-          <Input data-testid="filter-to" type="date" value={sampai} onChange={(e) => setSampai(e.target.value)} className="w-44" />
-        </label>
-        <Button variant="outline" data-testid="reset-filter" onClick={() => { setDari(hariIni()); setSampai(hariIni()); }}>
-          Hari ini
-        </Button>
+      <div className="mb-5 flex flex-wrap items-end gap-3">
+        <div className="flex flex-wrap gap-1.5">
+          {PRESET.map((p) => (
+            <button
+              key={p.label}
+              data-testid={`preset-${p.label.toLowerCase().replace(/\s/g, "-")}`}
+              onClick={() => {
+                setDari(p.from());
+                setSampai(p.to());
+              }}
+              className={cn(
+                "rounded-full border px-3.5 py-1.5 text-xs font-bold transition-colors duration-150",
+                aktifPreset === p.label
+                  ? "border-ink bg-ink text-bg"
+                  : "border-line bg-surface text-dim hover:border-ink/40 hover:text-ink",
+              )}
+            >
+              {p.label}
+            </button>
+          ))}
+        </div>
+        <div className="ml-auto flex flex-wrap items-end gap-2">
+          <label>
+            <span className="mb-1.5 block text-[10px] font-semibold uppercase tracking-[0.18em] text-dim">Dari</span>
+            <Input data-testid="filter-from" type="date" value={dari} onChange={(e) => setDari(e.target.value)} className="w-40" />
+          </label>
+          <label>
+            <span className="mb-1.5 block text-[10px] font-semibold uppercase tracking-[0.18em] text-dim">Sampai</span>
+            <Input data-testid="filter-to" type="date" value={sampai} onChange={(e) => setSampai(e.target.value)} className="w-40" />
+          </label>
+        </div>
       </div>
 
-      <div className="mb-6 grid gap-4 sm:grid-cols-3">
-        <StatCard label="Jumlah transaksi" value={angka(rows.length)} icon={<ReceiptText className="h-4 w-4" />} />
-        <StatCard label="Omzet periode" value={rupiah(omzet)} icon={<Wallet className="h-4 w-4" />} />
-        <StatCard label="Item terjual" value={angka(item)} />
+      <div className="mb-5 grid gap-4 sm:grid-cols-3">
+        <StatCard
+          data-testid="stat-count"
+          label="Jumlah transaksi"
+          value={angka(rows.length)}
+          numeric={rows.length}
+          format={angka}
+          icon={<ReceiptText className="h-4 w-4" />}
+        />
+        <StatCard
+          data-testid="stat-omzet"
+          label="Omzet periode"
+          value={rupiah(omzet)}
+          numeric={omzet}
+          format={rupiah}
+          hint={rows.length ? `rata-rata ${rupiah(omzet / rows.length)}` : undefined}
+          icon={<Wallet className="h-4 w-4" />}
+        />
+        <StatCard
+          data-testid="stat-item"
+          label="Item terjual"
+          value={angka(item)}
+          numeric={item}
+          format={angka}
+          icon={<Package className="h-4 w-4" />}
+        />
       </div>
 
-      <Panel className="overflow-hidden">
-        {loading ? (
-          <Spinner />
-        ) : rows.length === 0 ? (
-          <Empty text="Tidak ada transaksi pada periode ini." />
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="border-b border-zinc-200 bg-zinc-50">
-                <tr className="text-left text-[11px] uppercase tracking-[0.14em] text-zinc-500">
-                  <th className="px-5 py-3 font-semibold">No. Struk</th>
-                  <th className="px-5 py-3 font-semibold">Waktu</th>
-                  <th className="px-5 py-3 font-semibold">Kasir</th>
-                  <th className="px-5 py-3 font-semibold">Item</th>
-                  <th className="px-5 py-3 font-semibold">Metode</th>
-                  <th className="px-5 py-3 font-semibold">Total</th>
-                  <th className="px-5 py-3" />
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((t) => (
-                  <tr key={t.id} data-testid={`transaction-row-${t.id}`} className="border-b border-zinc-100 last:border-0 hover:bg-zinc-50">
-                    <td className="px-5 py-3 font-semibold text-zinc-900">{t.invoice_no}</td>
-                    <td className="px-5 py-3 text-zinc-500">{tanggal(t.created_at)}</td>
-                    <td className="px-5 py-3 text-zinc-600">{t.cashier_name ?? "-"}</td>
-                    <td className="px-5 py-3 tabular-nums text-zinc-600">
-                      {t.transaction_items?.reduce((a, i) => a + i.qty, 0) ?? 0}
-                    </td>
-                    <td className="px-5 py-3">
-                      <Badge tone={t.payment_method === "tunai" ? "green" : "indigo"}>{t.payment_method}</Badge>
-                    </td>
-                    <td className="px-5 py-3 font-bold tabular-nums text-zinc-900">{rupiah(t.total)}</td>
-                    <td className="px-5 py-3 text-right">
-                      <Button size="sm" variant="outline" data-testid={`view-receipt-${t.id}`} onClick={() => setDetail(t)}>
-                        <Eye className="h-3 w-3" /> Struk
-                      </Button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </Panel>
+      <DataTable
+        testId="transaksi-table"
+        rows={rows}
+        columns={columns}
+        keyOf={(t) => t.id}
+        loading={loading}
+        search
+        searchText={(t) => `${t.invoice_no} ${t.cashier_name ?? ""} ${t.customer_name ?? ""}`}
+        searchPlaceholder="Cari no. struk / kasir / pelanggan..."
+        emptyText="Tidak ada transaksi pada periode ini."
+        emptyHint="Ubah rentang tanggal atau mulai transaksi baru di halaman Kasir."
+        onRowClick={(t) => setDetail(t)}
+        rowTestId={(t) => `transaction-row-${t.id}`}
+        pageSize={12}
+        toolbar={<span className="text-[11px] text-dim">Klik baris untuk melihat struk</span>}
+      />
 
-      <Modal open={!!detail} onClose={() => setDetail(null)} title="Detail Struk" testId="receipt-modal">
+      <Sheet
+        open={!!detail}
+        onClose={() => setDetail(null)}
+        title="Detail Struk"
+        subtitle={detail?.invoice_no}
+        testId="receipt-sheet"
+      >
         {detail && <Receipt tx={detail} settings={settings} />}
-      </Modal>
+      </Sheet>
     </div>
   );
 }

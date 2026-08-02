@@ -1,5 +1,6 @@
 "use client";
 
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { Button } from "@/components/ui/button";
 import { Field, Input } from "@/components/ui/field";
 import { createClient } from "@/lib/supabase/client";
@@ -40,19 +41,24 @@ export default function DaftarPage() {
     }
   };
 
+  const kuat = form.password.length >= 10 ? 3 : form.password.length >= 8 ? 2 : form.password.length >= 6 ? 1 : 0;
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-100 px-6 py-16">
-      <div className="w-full max-w-md rounded-lg border border-zinc-200 bg-white p-8">
+    <div className="grid-bg flex min-h-screen items-center justify-center bg-bg px-6 py-16">
+      <div className="absolute right-5 top-5">
+        <ThemeToggle />
+      </div>
+      <div className="anim-up card w-full max-w-md p-8">
         <div className="flex items-center gap-3">
-          <span className="flex h-9 w-9 items-center justify-center rounded-md bg-indigo-600 font-display text-sm font-extrabold text-white">
+          <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-ink font-display text-xs font-extrabold text-bg">
             KP
           </span>
-          <span className="font-display text-base font-extrabold tracking-tight text-zinc-900">KasirPro</span>
+          <span className="font-display text-base font-extrabold tracking-tight text-ink">KasirPro</span>
         </div>
-        <h1 className="mt-6 font-display text-2xl font-extrabold tracking-tight text-zinc-900">Buat akun</h1>
-        <p className="mt-2 text-sm text-zinc-500">
-          Pengguna pertama otomatis menjadi <span className="font-semibold text-zinc-700">Admin</span>. Pendaftar
-          berikutnya berperan Kasir dan dapat diubah oleh admin.
+        <h1 className="mt-6 font-display text-[28px] font-extrabold tracking-tight text-ink">Buat akun</h1>
+        <p className="mt-2 text-sm leading-relaxed text-dim">
+          Pengguna pertama otomatis menjadi <span className="font-semibold text-ink">Admin</span>. Pendaftar berikutnya
+          berperan Kasir dan dapat diubah oleh admin.
         </p>
 
         <form onSubmit={submit} className="mt-6 space-y-4">
@@ -86,14 +92,24 @@ export default function DaftarPage() {
               placeholder="••••••••"
             />
           </Field>
+          <div className="flex gap-1.5">
+            {[1, 2, 3].map((i) => (
+              <span
+                key={i}
+                className={`h-1 flex-1 rounded-full transition-colors duration-200 ${
+                  kuat >= i ? (kuat === 1 ? "bg-bad" : kuat === 2 ? "bg-warn" : "bg-ok") : "bg-line"
+                }`}
+              />
+            ))}
+          </div>
 
           {error && (
-            <p data-testid="register-error" className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+            <p data-testid="register-error" className="anim-pop rounded-xl border border-bad/25 bg-bad-soft px-3.5 py-2.5 text-sm font-semibold text-bad">
               {error}
             </p>
           )}
           {info && (
-            <p data-testid="register-info" className="rounded-md border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-700">
+            <p data-testid="register-info" className="anim-pop rounded-xl border border-ok/25 bg-ok-soft px-3.5 py-2.5 text-sm font-semibold text-ok">
               {info}
             </p>
           )}
@@ -103,9 +119,9 @@ export default function DaftarPage() {
           </Button>
         </form>
 
-        <p className="mt-6 text-sm text-zinc-500">
+        <p className="mt-6 text-sm text-dim">
           Sudah punya akun?{" "}
-          <Link href="/masuk" className="font-semibold text-indigo-600 hover:underline">
+          <Link href="/masuk" className="font-bold text-brand underline-offset-4 hover:underline">
             Masuk
           </Link>
         </p>

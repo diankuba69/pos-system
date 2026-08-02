@@ -1,14 +1,16 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
+import { useConfirm } from "@/components/ui/confirm";
+import { DataTable, type Column } from "@/components/ui/data-table";
 import { Field, Input, Select } from "@/components/ui/field";
+import { Badge, PageHeader, StatCard } from "@/components/ui/misc";
 import { Modal } from "@/components/ui/modal";
-import { Badge, Empty, PageHeader, Panel, Spinner } from "@/components/ui/misc";
 import { createClient } from "@/lib/supabase/client";
 import type { Category, Product, Supplier } from "@/lib/types";
-import { rupiah } from "@/lib/utils";
-import { Pencil, Plus, Search, Tag, Trash2 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { angka, rupiah } from "@/lib/utils";
+import { AlertTriangle, Coins, Package, Pencil, Plus, Tag, Trash2 } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
 const kosong = {
@@ -26,18 +28,18 @@ const kosong = {
 
 export default function ProdukPage() {
   const supabase = useMemo(() => createClient(), []);
+  const confirm = useConfirm();
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [loading, setLoading] = useState(true);
-  const [cari, setCari] = useState("");
   const [open, setOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [form, setForm] = useState({ ...kosong });
   const [katOpen, setKatOpen] = useState(false);
   const [katBaru, setKatBaru] = useState("");
 
-  const muat = async () => {
+  const muat = useCallback(async () => {
     const [p, c, s] = await Promise.all([
       supabase.from("products").select("*, categories(name), suppliers(name)").order("created_at", { ascending: false }),
       supabase.from("categories").select("*").order("name"),
@@ -48,12 +50,11 @@ export default function ProdukPage() {
     setCategories((c.data as Category[]) ?? []);
     setSuppliers((s.data as Supplier[]) ?? []);
     setLoading(false);
-  };
+  }, [supabase]);
 
   useEffect(() => {
     muat();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [muat]);
 
   const simpan = async () => {
     if (!form.name.trim()) return toast.error("Nama produk wajib diisi");
@@ -81,7 +82,13 @@ export default function ProdukPage() {
   };
 
   const hapus = async (p: Product) => {
-    if (!confirm(`Hapus produk "${p.name}"?`)) return;
+    const ok = await confirm({
+      title: `Hapus "${p.name}"?`,
+      description: "Produk akan dihapus permanen dari katalog. Riwayat transaksi lama tetap tersimpan.",
+      confirmText: "Hapus produk",
+      tone: "danger",
+    });
+    if (!ok) return;
     const { error } = await supabase.from("products").delete().eq("id", p.id);
     if (error) return toast.error(error.message);
     toast.success("Produk dihapus");
@@ -97,16 +104,123 @@ export default function ProdukPage() {
     muat();
   };
 
-  const terfilter = products.filter((p) => {
-    const q = cari.trim().toLowerCase();
-    return !q || p.name.toLowerCase().includes(q) || (p.sku ?? "").toLowerCase().includes(q);
-  });
+  const nilaiStok = products.reduce((a, p) => a + p.stock * Number(p.cost), 0);
+  const menipis = products.filter((p) => p.stock <= p.min_stock).length;
+
+  const columns: Column<Product>[] = [
+    {
+      key: "nama",
+      header: "Produk",
+      sort: (p) => p.name,
+      cell: (p) => (
+        <div className="flex items-center gap-3">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-muted font-display text-[11px] font-extrabold text-dim">
+            {p.image_url ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={p.image_url} alt={p.name} className="h-full w-full object-cover" />
+            ) : (
+              p.name.slice(0, 2).toUpperCase()
+            )}
+          </span>
+          <span className="min-w-0">
+            <span className="block truncate font-semibold text-ink">{p.name}</span>
+            <span className="block font-mono text-[11px] text-dim">{p.sku ?? "tanpa SKU"}</span>
+          </span>
+        </div>
+      ),
+    },
+    { key: "kategori", header: "Kategori", sort: (p) => p.categories?.name ?? "", cell: (p) => <span className="text-dim">{p.categories?.name ?? "-"}</span> },
+    {
+      key: "harga",
+      header: "Harga",
+      align: "right",
+      sort: (p) => Number(p.price),
+      cell: (p) => (
+        <div>
+          <p className="font-display text-sm font-extrabold tabular-nums text-ink">{rupiah(p.price)}</p>
+          <p className="font-mono text-[11px] text-dim">beli {rupiah(p.cost)}</p>
+        </div>
+      ),
+    },
+    {
+      key: "margin",
+      header: "Margin",
+      align: "right",
+      sort: (p) => Number(p.price) - Number(p.cost),
+      cell: (p) => {
+        const m = Number(p.price) - Number(p.cost);
+        const pct = Number(p.price) ? (m / Number(p.price)) * 100 : 0;
+        return (
+          <span className={`font-mono text-xs font-bold tabular-nums ${m > 0 ? "text-ok" : "text-dim"}`}>
+            {pct.toFixed(0)}%
+          </span>
+        );
+      },
+    },
+    {
+      key: "stok",
+      header: "Stok",
+      align: "right",
+      sort: (p) => p.stock,
+      cell: (p) => (
+        <Badge tone={p.stock <= p.min_stock ? "red" : "green"}>
+          {p.stock} {p.unit}
+        </Badge>
+      ),
+    },
+    { key: "supplier", header: "Supplier", sort: (p) => p.suppliers?.name ?? "", cell: (p) => <span className="text-dim">{p.suppliers?.name ?? "-"}</span> },
+    {
+      key: "aksi",
+      header: "",
+      align: "right",
+      cell: (p) => (
+        <div className="flex justify-end gap-2">
+          <Button
+            size="sm"
+            variant="outline"
+            data-testid={`edit-product-${p.id}`}
+            onClick={(e) => {
+              e.stopPropagation();
+              setEditId(p.id);
+              setForm({
+                sku: p.sku ?? "",
+                name: p.name,
+                category_id: p.category_id ?? "",
+                supplier_id: p.supplier_id ?? "",
+                price: String(p.price),
+                cost: String(p.cost),
+                stock: String(p.stock),
+                min_stock: String(p.min_stock),
+                unit: p.unit,
+                image_url: p.image_url ?? "",
+              });
+              setOpen(true);
+            }}
+          >
+            <Pencil className="h-3 w-3" />
+          </Button>
+          <Button
+            size="sm"
+            variant="danger"
+            data-testid={`delete-product-${p.id}`}
+            onClick={(e) => {
+              e.stopPropagation();
+              hapus(p);
+            }}
+          >
+            <Trash2 className="h-3 w-3" />
+          </Button>
+        </div>
+      ),
+    },
+  ];
 
   return (
-    <div className="p-8">
+    <div className="p-4 sm:p-6 lg:p-8">
       <PageHeader
+        eyebrow="Inventori"
         title="Produk"
-        subtitle="Kelola daftar produk, harga jual, dan kategori."
+        subtitle="Kelola katalog, harga jual, margin, dan kategori produk toko Anda."
         action={
           <div className="flex gap-2">
             <Button variant="outline" data-testid="open-category-modal" onClick={() => setKatOpen(true)}>
@@ -126,92 +240,49 @@ export default function ProdukPage() {
         }
       />
 
-      <div className="relative mb-4 max-w-sm">
-        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400" />
-        <Input
-          data-testid="search-product"
-          value={cari}
-          onChange={(e) => setCari(e.target.value)}
-          placeholder="Cari produk..."
-          className="pl-9"
+      <div className="mb-5 grid gap-4 sm:grid-cols-3">
+        <StatCard label="Total produk" value={angka(products.length)} numeric={products.length} format={angka} icon={<Package className="h-4 w-4" />} />
+        <StatCard label="Nilai stok (harga beli)" value={rupiah(nilaiStok)} numeric={nilaiStok} format={rupiah} icon={<Coins className="h-4 w-4" />} />
+        <StatCard
+          label="Perlu restock"
+          value={angka(menipis)}
+          numeric={menipis}
+          format={angka}
+          hint="Stok <= minimum"
+          icon={<AlertTriangle className="h-4 w-4" />}
         />
       </div>
 
-      <Panel className="overflow-hidden">
-        {loading ? (
-          <Spinner />
-        ) : terfilter.length === 0 ? (
-          <Empty text="Belum ada produk." />
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="border-b border-zinc-200 bg-zinc-50">
-                <tr className="text-left text-[11px] uppercase tracking-[0.14em] text-zinc-500">
-                  <th className="px-5 py-3 font-semibold">Produk</th>
-                  <th className="px-5 py-3 font-semibold">Kategori</th>
-                  <th className="px-5 py-3 font-semibold">Harga</th>
-                  <th className="px-5 py-3 font-semibold">Stok</th>
-                  <th className="px-5 py-3 font-semibold">Supplier</th>
-                  <th className="px-5 py-3" />
-                </tr>
-              </thead>
-              <tbody>
-                {terfilter.map((p) => (
-                  <tr key={p.id} data-testid={`product-row-${p.id}`} className="border-b border-zinc-100 last:border-0 hover:bg-zinc-50">
-                    <td className="px-5 py-3">
-                      <p className="font-semibold text-zinc-900">{p.name}</p>
-                      <p className="text-xs text-zinc-500">{p.sku ?? "-"}</p>
-                    </td>
-                    <td className="px-5 py-3 text-zinc-600">{p.categories?.name ?? "-"}</td>
-                    <td className="px-5 py-3 font-semibold tabular-nums text-zinc-900">{rupiah(p.price)}</td>
-                    <td className="px-5 py-3">
-                      <Badge tone={p.stock <= p.min_stock ? "red" : "green"}>
-                        {p.stock} {p.unit}
-                      </Badge>
-                    </td>
-                    <td className="px-5 py-3 text-zinc-600">{p.suppliers?.name ?? "-"}</td>
-                    <td className="px-5 py-3">
-                      <div className="flex justify-end gap-2">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          data-testid={`edit-product-${p.id}`}
-                          onClick={() => {
-                            setEditId(p.id);
-                            setForm({
-                              sku: p.sku ?? "",
-                              name: p.name,
-                              category_id: p.category_id ?? "",
-                              supplier_id: p.supplier_id ?? "",
-                              price: String(p.price),
-                              cost: String(p.cost),
-                              stock: String(p.stock),
-                              min_stock: String(p.min_stock),
-                              unit: p.unit,
-                              image_url: p.image_url ?? "",
-                            });
-                            setOpen(true);
-                          }}
-                        >
-                          <Pencil className="h-3 w-3" />
-                        </Button>
-                        <Button size="sm" variant="danger" data-testid={`delete-product-${p.id}`} onClick={() => hapus(p)}>
-                          <Trash2 className="h-3 w-3" />
-                        </Button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </Panel>
+      <DataTable
+        testId="produk-table"
+        rows={products}
+        columns={columns}
+        keyOf={(p) => p.id}
+        loading={loading}
+        search
+        searchText={(p) => `${p.name} ${p.sku ?? ""} ${p.categories?.name ?? ""}`}
+        searchPlaceholder="Cari nama atau SKU produk..."
+        rowTestId={(p) => `product-row-${p.id}`}
+        emptyText="Belum ada produk"
+        emptyHint="Tambahkan produk pertama Anda untuk mulai berjualan."
+        emptyAction={
+          <Button
+            onClick={() => {
+              setEditId(null);
+              setForm({ ...kosong });
+              setOpen(true);
+            }}
+          >
+            <Plus className="h-4 w-4" /> Produk Baru
+          </Button>
+        }
+      />
 
       <Modal
         open={open}
         onClose={() => setOpen(false)}
         title={editId ? "Ubah Produk" : "Produk Baru"}
+        subtitle="Harga jual & stok akan langsung dipakai di halaman Kasir"
         width="max-w-2xl"
         testId="product-modal"
       >
@@ -220,7 +291,7 @@ export default function ProdukPage() {
             <Input data-testid="form-name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
           </Field>
           <Field label="SKU / Barcode">
-            <Input data-testid="form-sku" value={form.sku} onChange={(e) => setForm({ ...form, sku: e.target.value })} />
+            <Input data-testid="form-sku" value={form.sku} onChange={(e) => setForm({ ...form, sku: e.target.value })} className="font-mono" />
           </Field>
           <Field label="Kategori">
             <Select
@@ -240,12 +311,23 @@ export default function ProdukPage() {
               placeholder="Pilih supplier"
             />
           </Field>
-          <Field label="Harga jual (Rp)">
+          <Field
+            label="Harga jual (Rp)"
+            hint={
+              form.price && form.cost
+                ? `Margin ${rupiah(Number(form.price) - Number(form.cost))} (${(
+                    ((Number(form.price) - Number(form.cost)) / Number(form.price || 1)) *
+                    100
+                  ).toFixed(0)}%)`
+                : undefined
+            }
+          >
             <Input
               data-testid="form-price"
               type="number"
               value={form.price}
               onChange={(e) => setForm({ ...form, price: e.target.value })}
+              className="text-right font-mono tabular-nums"
             />
           </Field>
           <Field label="Harga beli (Rp)">
@@ -254,6 +336,7 @@ export default function ProdukPage() {
               type="number"
               value={form.cost}
               onChange={(e) => setForm({ ...form, cost: e.target.value })}
+              className="text-right font-mono tabular-nums"
             />
           </Field>
           <Field label="Stok">
@@ -262,14 +345,16 @@ export default function ProdukPage() {
               type="number"
               value={form.stock}
               onChange={(e) => setForm({ ...form, stock: e.target.value })}
+              className="text-right font-mono tabular-nums"
             />
           </Field>
-          <Field label="Stok minimum">
+          <Field label="Stok minimum" hint="Peringatan restock muncul saat stok <= angka ini">
             <Input
               data-testid="form-minstock"
               type="number"
               value={form.min_stock}
               onChange={(e) => setForm({ ...form, min_stock: e.target.value })}
+              className="text-right font-mono tabular-nums"
             />
           </Field>
           <Field label="Satuan">
@@ -284,7 +369,7 @@ export default function ProdukPage() {
             />
           </Field>
         </div>
-        <div className="mt-6 flex justify-end gap-2">
+        <div className="mt-6 flex justify-end gap-2 border-t border-line pt-5">
           <Button variant="outline" onClick={() => setOpen(false)}>
             Batal
           </Button>
@@ -300,6 +385,7 @@ export default function ProdukPage() {
             data-testid="category-name"
             value={katBaru}
             onChange={(e) => setKatBaru(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && tambahKategori()}
             placeholder="Nama kategori baru"
           />
           <Button data-testid="save-category" onClick={tambahKategori}>
@@ -308,15 +394,20 @@ export default function ProdukPage() {
         </div>
         <div className="mt-5 space-y-2">
           {categories.map((c) => (
-            <div key={c.id} className="flex items-center justify-between rounded-md border border-zinc-200 px-4 py-2">
-              <span className="text-sm font-semibold text-zinc-800">{c.name}</span>
+            <div key={c.id} className="flex items-center justify-between rounded-xl border border-line px-4 py-2.5">
+              <span className="text-sm font-semibold text-ink">{c.name}</span>
               <Button
                 size="sm"
                 variant="danger"
                 data-testid={`delete-category-${c.id}`}
                 onClick={async () => {
-                  if (!confirm(`Hapus kategori "${c.name}"? Produk pada kategori ini akan menjadi tanpa kategori.`))
-                    return;
+                  const ok = await confirm({
+                    title: `Hapus kategori "${c.name}"?`,
+                    description: "Produk pada kategori ini akan menjadi tanpa kategori.",
+                    confirmText: "Hapus kategori",
+                    tone: "danger",
+                  });
+                  if (!ok) return;
                   const { error } = await supabase.from("categories").delete().eq("id", c.id);
                   if (error) return toast.error(error.message);
                   toast.success("Kategori dihapus");
@@ -327,7 +418,7 @@ export default function ProdukPage() {
               </Button>
             </div>
           ))}
-          {categories.length === 0 && <p className="text-sm text-zinc-500">Belum ada kategori.</p>}
+          {categories.length === 0 && <p className="text-sm text-dim">Belum ada kategori.</p>}
         </div>
       </Modal>
     </div>

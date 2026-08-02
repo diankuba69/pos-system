@@ -1,11 +1,22 @@
 "use client";
 
-import { PageHeader, Panel, Spinner, StatCard } from "@/components/ui/misc";
+import { Button } from "@/components/ui/button";
+import { Segmented } from "@/components/ui/field";
+import { Empty, PageHeader, Panel, SectionTitle, Skeleton, StatCard } from "@/components/ui/misc";
 import { createClient } from "@/lib/supabase/client";
 import type { Product, Transaction } from "@/lib/types";
-import { angka, rupiah, tanggalPendek } from "@/lib/utils";
-import { AlertTriangle, Receipt, TrendingUp, Wallet } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { angka, delta, namaHari, rupiah, rupiahRingkas, tanggalPendek, unduhCsv } from "@/lib/utils";
+import {
+  AlertTriangle,
+  Clock,
+  Download,
+  Lightbulb,
+  Receipt,
+  Sparkles,
+  TrendingUp,
+  Wallet,
+} from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Area,
   AreaChart,
@@ -13,6 +24,7 @@ import {
   BarChart,
   CartesianGrid,
   Cell,
+  Line,
   Pie,
   PieChart,
   ResponsiveContainer,
@@ -23,65 +35,100 @@ import {
 import { toast } from "sonner";
 
 const RANGE = [
-  { days: 7, label: "7 hari" },
-  { days: 14, label: "14 hari" },
-  { days: 30, label: "30 hari" },
-];
+  { value: "7", label: "7 hari" },
+  { value: "14", label: "14 hari" },
+  { value: "30", label: "30 hari" },
+] as const;
+
+const WARNA = ["#3b6cf6", "#10b981", "#f59e0b"];
+const METODE_LABEL: Record<string, string> = { tunai: "Tunai", qris: "QRIS", kartu: "Kartu" };
 
 export default function LaporanPage() {
   const supabase = useMemo(() => createClient(), []);
-  const [days, setDays] = useState(14);
+  const [days, setDays] = useState<"7" | "14" | "30">("14");
   const [txs, setTxs] = useState<Transaction[]>([]);
+  const [prevTxs, setPrevTxs] = useState<Transaction[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const n = Number(days);
+
+  const muat = useCallback(async () => {
+    setLoading(true);
+    const mulai = new Date();
+    mulai.setDate(mulai.getDate() - (n - 1));
+    mulai.setHours(0, 0, 0, 0);
+    const mulaiLalu = new Date(mulai);
+    mulaiLalu.setDate(mulaiLalu.getDate() - n);
+
+    const [t, p] = await Promise.all([
+      supabase
+        .from("transactions")
+        .select("*, transaction_items(*)")
+        .gte("created_at", mulaiLalu.toISOString())
+        .order("created_at"),
+      supabase.from("products").select("*"),
+    ]);
+    if (t.error) toast.error(t.error.message);
+    const semua = (t.data as Transaction[]) ?? [];
+    setTxs(semua.filter((x) => new Date(x.created_at) >= mulai));
+    setPrevTxs(semua.filter((x) => new Date(x.created_at) < mulai));
+    setProducts((p.data as Product[]) ?? []);
+    setLoading(false);
+  }, [supabase, n]);
+
   useEffect(() => {
-    const muat = async () => {
-      setLoading(true);
-      const from = new Date();
-      from.setDate(from.getDate() - (days - 1));
-      from.setHours(0, 0, 0, 0);
-      const [t, p] = await Promise.all([
-        supabase
-          .from("transactions")
-          .select("*, transaction_items(*)")
-          .gte("created_at", from.toISOString())
-          .order("created_at"),
-        supabase.from("products").select("*"),
-      ]);
-      if (t.error) toast.error(t.error.message);
-      setTxs((t.data as Transaction[]) ?? []);
-      setProducts((p.data as Product[]) ?? []);
-      setLoading(false);
-    };
     muat();
-  }, [supabase, days]);
+  }, [muat]);
 
   const hariIni = new Date().toDateString();
   const txHariIni = txs.filter((t) => new Date(t.created_at).toDateString() === hariIni);
+  const kemarinKey = new Date(Date.now() - 86400000).toDateString();
+  const txKemarin = txs.filter((t) => new Date(t.created_at).toDateString() === kemarinKey);
+
   const omzetHariIni = txHariIni.reduce((a, t) => a + Number(t.total), 0);
+  const omzetKemarin = txKemarin.reduce((a, t) => a + Number(t.total), 0);
   const omzetPeriode = txs.reduce((a, t) => a + Number(t.total), 0);
+  const omzetPeriodeLalu = prevTxs.reduce((a, t) => a + Number(t.total), 0);
   const rataRata = txs.length ? omzetPeriode / txs.length : 0;
-  const stokMenipis = products.filter((p) => p.stock <= p.min_stock).length;
+  const rataRataLalu = prevTxs.length ? omzetPeriodeLalu / prevTxs.length : 0;
+  const stokMenipis = products.filter((p) => p.stock <= p.min_stock);
+  const totalItem = txs.reduce((a, t) => a + (t.transaction_items?.reduce((b, i) => b + i.qty, 0) ?? 0), 0);
 
   const harian = useMemo(() => {
-    const map = new Map<string, { tanggal: string; omzet: number; transaksi: number }>();
-    for (let i = days - 1; i >= 0; i--) {
+    const map = new Map<string, { key: string; tanggal: string; omzet: number; lalu: number; transaksi: number }>();
+    for (let i = n - 1; i >= 0; i--) {
       const d = new Date();
       d.setDate(d.getDate() - i);
       const key = d.toISOString().slice(0, 10);
-      map.set(key, { tanggal: tanggalPendek(key), omzet: 0, transaksi: 0 });
+      map.set(key, { key, tanggal: tanggalPendek(key), omzet: 0, lalu: 0, transaksi: 0 });
     }
+    const keys = [...map.keys()];
     txs.forEach((t) => {
-      const key = new Date(t.created_at).toISOString().slice(0, 10);
-      const row = map.get(key);
+      const row = map.get(new Date(t.created_at).toISOString().slice(0, 10));
       if (row) {
         row.omzet += Number(t.total);
         row.transaksi += 1;
       }
     });
+    prevTxs.forEach((t) => {
+      const d = new Date(t.created_at);
+      d.setDate(d.getDate() + n);
+      const idx = keys.indexOf(d.toISOString().slice(0, 10));
+      if (idx >= 0) map.get(keys[idx])!.lalu += Number(t.total);
+    });
     return [...map.values()];
-  }, [txs, days]);
+  }, [txs, prevTxs, n]);
+
+  const perJam = useMemo(() => {
+    const arr = Array.from({ length: 24 }, (_, h) => ({ jam: `${String(h).padStart(2, "0")}`, omzet: 0, tx: 0 }));
+    txs.forEach((t) => {
+      const h = new Date(t.created_at).getHours();
+      arr[h].omzet += Number(t.total);
+      arr[h].tx += 1;
+    });
+    return arr.filter((x) => x.tx > 0 || (Number(x.jam) >= 7 && Number(x.jam) <= 22));
+  }, [txs]);
 
   const topProduk = useMemo(() => {
     const map = new Map<string, { nama: string; qty: number; omzet: number }>();
@@ -99,161 +146,311 @@ export default function LaporanPage() {
   const metode = useMemo(() => {
     const map = new Map<string, number>();
     txs.forEach((t) => map.set(t.payment_method, (map.get(t.payment_method) ?? 0) + Number(t.total)));
-    return [...map.entries()].map(([name, value]) => ({ name, value }));
+    return [...map.entries()].map(([name, value]) => ({ name: METODE_LABEL[name] ?? name, value }));
   }, [txs]);
 
-  const WARNA = ["#4f46e5", "#16a34a", "#f59e0b"];
+  const insight = useMemo(() => {
+    const out: string[] = [];
+    const terbaik = [...harian].sort((a, b) => b.omzet - a.omzet)[0];
+    if (terbaik && terbaik.omzet > 0)
+      out.push(`Hari terbaik: ${namaHari(terbaik.key)} ${terbaik.tanggal} dengan omzet ${rupiah(terbaik.omzet)}.`);
+    const jamSibuk = [...perJam].sort((a, b) => b.tx - a.tx)[0];
+    if (jamSibuk && jamSibuk.tx > 0)
+      out.push(`Jam tersibuk sekitar ${jamSibuk.jam}:00 (${jamSibuk.tx} transaksi) — siapkan kasir tambahan.`);
+    if (txs.length) out.push(`Rata-rata ${(totalItem / txs.length).toFixed(1)} item per transaksi.`);
+    const dom = [...metode].sort((a, b) => b.value - a.value)[0];
+    if (dom) out.push(`Metode pembayaran dominan: ${dom.name} (${((dom.value / (omzetPeriode || 1)) * 100).toFixed(0)}% omzet).`);
+    if (stokMenipis.length) out.push(`${stokMenipis.length} produk perlu restock agar penjualan tidak terhenti.`);
+    return out;
+  }, [harian, perJam, txs.length, totalItem, metode, omzetPeriode, stokMenipis.length]);
+
+  const ekspor = () =>
+    unduhCsv(`laporan-${days}hari.csv`, [
+      ["Tanggal", "Transaksi", "Omzet"],
+      ...harian.map((h) => [h.key, h.transaksi, h.omzet]),
+      ["TOTAL", txs.length, omzetPeriode],
+    ]);
+
+  const tooltipStyle = {
+    borderRadius: 12,
+    border: "1px solid var(--line)",
+    background: "var(--surface)",
+    color: "var(--ink)",
+    fontSize: 12,
+  };
 
   return (
-    <div className="p-8">
+    <div className="p-4 sm:p-6 lg:p-8">
       <PageHeader
-        title="Dashboard & Laporan"
-        subtitle="Ringkasan performa penjualan toko Anda."
+        eyebrow="Analitik"
+        title="Dashboard Penjualan"
+        subtitle="Bandingkan performa dengan periode sebelumnya, temukan jam tersibuk, dan pantau stok kritis."
         action={
-          <div className="flex gap-2">
-            {RANGE.map((r) => (
-              <button
-                key={r.days}
-                data-testid={`range-${r.days}`}
-                onClick={() => setDays(r.days)}
-                className={`rounded-full border px-4 py-1.5 text-sm font-semibold transition-colors duration-150 ${
-                  days === r.days
-                    ? "border-zinc-900 bg-zinc-900 text-white"
-                    : "border-zinc-200 bg-white text-zinc-600 hover:border-zinc-400"
-                }`}
-              >
-                {r.label}
-              </button>
-            ))}
+          <div className="flex flex-wrap items-center gap-2">
+            <Segmented
+              value={days}
+              onChange={setDays}
+              testIdPrefix="range"
+              items={RANGE.map((r) => ({ value: r.value, label: r.label }))}
+            />
+            <Button variant="outline" data-testid="export-csv" onClick={ekspor}>
+              <Download className="h-4 w-4" /> CSV
+            </Button>
           </div>
         }
       />
 
-      <div className="mb-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="mb-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard
+          data-testid="stat-today"
           label="Omzet hari ini"
           value={rupiah(omzetHariIni)}
-          hint={`${txHariIni.length} transaksi`}
+          numeric={omzetHariIni}
+          format={rupiah}
+          hint={`${txHariIni.length} transaksi · vs kemarin`}
+          delta={delta(omzetHariIni, omzetKemarin)}
           icon={<Wallet className="h-4 w-4" />}
         />
-        <StatCard label={`Omzet ${days} hari`} value={rupiah(omzetPeriode)} icon={<TrendingUp className="h-4 w-4" />} />
-        <StatCard label="Rata-rata / transaksi" value={rupiah(rataRata)} icon={<Receipt className="h-4 w-4" />} />
         <StatCard
+          data-testid="stat-period"
+          label={`Omzet ${n} hari`}
+          value={rupiah(omzetPeriode)}
+          numeric={omzetPeriode}
+          format={rupiah}
+          hint={`vs ${n} hari sebelumnya`}
+          delta={delta(omzetPeriode, omzetPeriodeLalu)}
+          spark={harian.map((h) => h.omzet)}
+          icon={<TrendingUp className="h-4 w-4" />}
+        />
+        <StatCard
+          data-testid="stat-avg"
+          label="Rata-rata / transaksi"
+          value={rupiah(rataRata)}
+          numeric={rataRata}
+          format={rupiah}
+          hint={`${angka(txs.length)} transaksi · ${angka(totalItem)} item`}
+          delta={delta(rataRata, rataRataLalu)}
+          icon={<Receipt className="h-4 w-4" />}
+        />
+        <StatCard
+          data-testid="stat-lowstock"
           label="Stok menipis"
-          value={angka(stokMenipis)}
-          hint="Item perlu restock"
+          value={angka(stokMenipis.length)}
+          numeric={stokMenipis.length}
+          format={angka}
+          hint="Item di bawah stok minimum"
           icon={<AlertTriangle className="h-4 w-4" />}
         />
       </div>
 
       {loading ? (
-        <Panel>
-          <Spinner label="Menghitung laporan..." />
-        </Panel>
+        <div className="grid gap-4 xl:grid-cols-3">
+          <Panel className="p-6 xl:col-span-2">
+            <Skeleton className="h-72 w-full" />
+          </Panel>
+          <Panel className="p-6">
+            <Skeleton className="h-72 w-full" />
+          </Panel>
+        </div>
       ) : (
         <div className="grid gap-4 xl:grid-cols-3">
           <Panel className="p-6 xl:col-span-2">
-            <h3 className="mb-4 font-display text-sm font-extrabold uppercase tracking-[0.14em] text-zinc-500">
+            <SectionTitle
+              action={
+                <span className="flex items-center gap-3 text-[10px] font-semibold uppercase tracking-[0.14em] text-dim">
+                  <span className="flex items-center gap-1.5">
+                    <span className="h-2 w-2 rounded-full" style={{ background: WARNA[0] }} /> periode ini
+                  </span>
+                  <span className="flex items-center gap-1.5">
+                    <span className="h-2 w-2 rounded-full bg-dim/50" /> periode lalu
+                  </span>
+                </span>
+              }
+            >
               Tren omzet harian
-            </h3>
+            </SectionTitle>
             <div className="h-72" data-testid="chart-omzet">
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={harian}>
                   <defs>
                     <linearGradient id="omzetFill" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#4f46e5" stopOpacity={0.28} />
-                      <stop offset="100%" stopColor="#4f46e5" stopOpacity={0} />
+                      <stop offset="0%" stopColor={WARNA[0]} stopOpacity={0.3} />
+                      <stop offset="100%" stopColor={WARNA[0]} stopOpacity={0} />
                     </linearGradient>
                   </defs>
-                  <CartesianGrid stroke="#e4e4e7" vertical={false} />
-                  <XAxis dataKey="tanggal" tick={{ fontSize: 11, fill: "#71717a" }} axisLine={false} tickLine={false} />
+                  <CartesianGrid stroke="var(--line)" vertical={false} />
+                  <XAxis dataKey="tanggal" tick={{ fontSize: 11, fill: "var(--dim)" }} axisLine={false} tickLine={false} />
                   <YAxis
-                    tick={{ fontSize: 11, fill: "#71717a" }}
+                    tick={{ fontSize: 11, fill: "var(--dim)" }}
                     axisLine={false}
                     tickLine={false}
-                    tickFormatter={(v) => `${Number(v) / 1000}rb`}
+                    tickFormatter={(v) => rupiahRingkas(Number(v))}
                   />
-                  <Tooltip
-                    formatter={(v) => rupiah(Number(v))}
-                    contentStyle={{ borderRadius: 8, border: "1px solid #e4e4e7", fontSize: 12 }}
+                  <Tooltip formatter={(v) => rupiah(Number(v))} contentStyle={tooltipStyle} />
+                  <Area type="monotone" dataKey="omzet" name="Periode ini" stroke={WARNA[0]} strokeWidth={2.5} fill="url(#omzetFill)" />
+                  <Line
+                    type="monotone"
+                    dataKey="lalu"
+                    name="Periode lalu"
+                    stroke="var(--dim)"
+                    strokeWidth={1.5}
+                    strokeDasharray="4 4"
+                    dot={false}
                   />
-                  <Area type="monotone" dataKey="omzet" stroke="#4f46e5" strokeWidth={2} fill="url(#omzetFill)" />
                 </AreaChart>
               </ResponsiveContainer>
             </div>
           </Panel>
 
           <Panel className="p-6">
-            <h3 className="mb-4 font-display text-sm font-extrabold uppercase tracking-[0.14em] text-zinc-500">
-              Metode pembayaran
-            </h3>
+            <SectionTitle>Metode pembayaran</SectionTitle>
             {metode.length === 0 ? (
-              <p className="py-16 text-center text-sm text-zinc-500">Belum ada data.</p>
+              <Empty text="Belum ada data" hint="Transaksi akan muncul di sini." />
             ) : (
-              <div className="h-72" data-testid="chart-metode">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie data={metode} dataKey="value" nameKey="name" innerRadius={55} outerRadius={95} paddingAngle={3}>
-                      {metode.map((_, i) => (
-                        <Cell key={i} fill={WARNA[i % WARNA.length]} />
-                      ))}
-                    </Pie>
-                    <Tooltip formatter={(v) => rupiah(Number(v))} contentStyle={{ borderRadius: 8, fontSize: 12 }} />
-                  </PieChart>
-                </ResponsiveContainer>
-              </div>
+              <>
+                <div className="h-52" data-testid="chart-metode">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie data={metode} dataKey="value" nameKey="name" innerRadius={52} outerRadius={82} paddingAngle={3} stroke="none">
+                        {metode.map((_, i) => (
+                          <Cell key={i} fill={WARNA[i % WARNA.length]} />
+                        ))}
+                      </Pie>
+                      <Tooltip formatter={(v) => rupiah(Number(v))} contentStyle={tooltipStyle} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+                <div className="mt-3 space-y-2">
+                  {metode.map((m, i) => (
+                    <div key={m.name} className="flex items-center justify-between text-xs">
+                      <span className="flex items-center gap-2 font-semibold text-ink">
+                        <span className="h-2.5 w-2.5 rounded-full" style={{ background: WARNA[i % WARNA.length] }} />
+                        {m.name}
+                      </span>
+                      <span className="font-mono tabular-nums text-dim">
+                        {rupiah(m.value)} · {((m.value / (omzetPeriode || 1)) * 100).toFixed(0)}%
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </>
             )}
           </Panel>
 
           <Panel className="p-6 xl:col-span-2">
-            <h3 className="mb-4 font-display text-sm font-extrabold uppercase tracking-[0.14em] text-zinc-500">
-              Produk terlaris
-            </h3>
+            <SectionTitle>Jam tersibuk (omzet per jam)</SectionTitle>
+            <div className="h-56" data-testid="chart-jam">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={perJam}>
+                  <CartesianGrid stroke="var(--line)" vertical={false} />
+                  <XAxis dataKey="jam" tick={{ fontSize: 10, fill: "var(--dim)" }} axisLine={false} tickLine={false} />
+                  <YAxis
+                    tick={{ fontSize: 10, fill: "var(--dim)" }}
+                    axisLine={false}
+                    tickLine={false}
+                    tickFormatter={(v) => rupiahRingkas(Number(v))}
+                  />
+                  <Tooltip formatter={(v) => rupiah(Number(v))} contentStyle={tooltipStyle} />
+                  <Bar dataKey="omzet" name="Omzet" fill={WARNA[0]} radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </Panel>
+
+          <Panel className="border-brand/25 bg-brand-soft/40 p-6">
+            <SectionTitle>
+              <span className="flex items-center gap-2 text-brand">
+                <Lightbulb className="h-3.5 w-3.5" /> Insight otomatis
+              </span>
+            </SectionTitle>
+            <div className="space-y-2.5" data-testid="insight-list">
+              {insight.length === 0 && <p className="text-sm text-dim">Belum cukup data untuk menghasilkan insight.</p>}
+              {insight.map((s, i) => (
+                <div
+                  key={i}
+                  style={{ animationDelay: `${i * 90}ms` }}
+                  className="anim-up flex gap-2.5 rounded-xl border border-line bg-surface px-3.5 py-2.5"
+                >
+                  <Sparkles className="mt-0.5 h-3.5 w-3.5 shrink-0 text-brand" />
+                  <p className="text-[13px] leading-relaxed text-ink">{s}</p>
+                </div>
+              ))}
+            </div>
+          </Panel>
+
+          <Panel className="p-6 xl:col-span-2">
+            <SectionTitle>Produk terlaris</SectionTitle>
             {topProduk.length === 0 ? (
-              <p className="py-16 text-center text-sm text-zinc-500">Belum ada penjualan.</p>
+              <Empty text="Belum ada penjualan" />
             ) : (
-              <div className="h-64" data-testid="chart-top-produk">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={topProduk} layout="vertical" margin={{ left: 20 }}>
-                    <CartesianGrid stroke="#e4e4e7" horizontal={false} />
-                    <XAxis type="number" tick={{ fontSize: 11, fill: "#71717a" }} axisLine={false} tickLine={false} />
-                    <YAxis
-                      type="category"
-                      dataKey="nama"
-                      width={120}
-                      tick={{ fontSize: 11, fill: "#3f3f46" }}
-                      axisLine={false}
-                      tickLine={false}
-                    />
-                    <Tooltip contentStyle={{ borderRadius: 8, fontSize: 12 }} />
-                    <Bar dataKey="qty" fill="#18181b" radius={[0, 4, 4, 0]} barSize={18} name="Terjual" />
-                  </BarChart>
-                </ResponsiveContainer>
+              <div className="space-y-2.5" data-testid="top-produk">
+                {topProduk.map((p, i) => {
+                  const max = topProduk[0].qty || 1;
+                  return (
+                    <div key={p.nama} style={{ animationDelay: `${i * 60}ms` }} className="anim-up">
+                      <div className="mb-1.5 flex items-center justify-between gap-3">
+                        <span className="flex min-w-0 items-center gap-2.5">
+                          <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-ink font-mono text-[10px] font-bold text-bg">
+                            {i + 1}
+                          </span>
+                          <span className="truncate text-[13px] font-semibold text-ink">{p.nama}</span>
+                        </span>
+                        <span className="shrink-0 font-mono text-xs tabular-nums text-dim">
+                          {p.qty} terjual · {rupiah(p.omzet)}
+                        </span>
+                      </div>
+                      <div className="anim-bar h-1.5 overflow-hidden rounded-full bg-muted">
+                        <span
+                          className="block h-full rounded-full bg-brand"
+                          style={{ width: `${(p.qty / max) * 100}%`, animationDelay: `${i * 70}ms` }}
+                        />
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             )}
           </Panel>
 
           <Panel className="p-6">
-            <h3 className="mb-4 font-display text-sm font-extrabold uppercase tracking-[0.14em] text-zinc-500">
-              Ringkasan produk terlaris
-            </h3>
-            <div className="space-y-3">
-              {topProduk.map((p, i) => (
-                <div key={p.nama} className="flex items-center justify-between border-b border-zinc-100 pb-2 last:border-0">
-                  <div className="flex items-center gap-3">
-                    <span className="flex h-6 w-6 items-center justify-center rounded-md bg-zinc-900 text-[11px] font-bold text-white">
-                      {i + 1}
+            <SectionTitle>
+              <span className="flex items-center gap-2 text-bad">
+                <AlertTriangle className="h-3.5 w-3.5" /> Perlu restock
+              </span>
+            </SectionTitle>
+            {stokMenipis.length === 0 ? (
+              <p className="rounded-xl border border-ok/25 bg-ok-soft px-4 py-3 text-sm font-semibold text-ok">
+                Semua stok aman.
+              </p>
+            ) : (
+              <div className="space-y-2" data-testid="restock-list">
+                {stokMenipis.slice(0, 7).map((p, i) => (
+                  <div
+                    key={p.id}
+                    style={{ animationDelay: `${i * 70}ms` }}
+                    className="anim-up flex items-center justify-between gap-3 rounded-xl border border-line px-3.5 py-2.5"
+                  >
+                    <span className="truncate text-[13px] font-semibold text-ink">{p.name}</span>
+                    <span className="shrink-0 font-mono text-[11px] font-bold tabular-nums text-bad">
+                      {p.stock}/{p.min_stock} {p.unit}
                     </span>
-                    <span className="text-sm font-semibold text-zinc-800">{p.nama}</span>
                   </div>
-                  <div className="text-right">
-                    <p className="text-sm font-bold tabular-nums text-zinc-900">{rupiah(p.omzet)}</p>
-                    <p className="text-[11px] text-zinc-500">{p.qty} terjual</p>
-                  </div>
-                </div>
-              ))}
-              {topProduk.length === 0 && <p className="text-sm text-zinc-500">Belum ada data.</p>}
-            </div>
+                ))}
+                {stokMenipis.length > 7 && (
+                  <p className="pt-1 text-xs text-dim">+{stokMenipis.length - 7} produk lainnya</p>
+                )}
+              </div>
+            )}
+          </Panel>
+
+          <Panel className="flex items-center gap-4 p-6 xl:col-span-3">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-muted text-dim">
+              <Clock className="h-5 w-5" />
+            </span>
+            <p className="text-[13px] text-dim">
+              Data dihitung dari {angka(txs.length)} transaksi dalam {n} hari terakhir, dibandingkan dengan{" "}
+              {angka(prevTxs.length)} transaksi pada {n} hari sebelumnya.
+            </p>
           </Panel>
         </div>
       )}

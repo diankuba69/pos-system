@@ -1,36 +1,38 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
+import { useConfirm } from "@/components/ui/confirm";
+import { DataTable, type Column } from "@/components/ui/data-table";
 import { Field, Input, Textarea } from "@/components/ui/field";
+import { PageHeader } from "@/components/ui/misc";
 import { Modal } from "@/components/ui/modal";
-import { Empty, PageHeader, Panel, Spinner } from "@/components/ui/misc";
 import { createClient } from "@/lib/supabase/client";
 import type { Supplier } from "@/lib/types";
-import { Pencil, Plus, Trash2 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { Mail, Pencil, Phone, Plus, Trash2 } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
 const kosong = { name: "", contact_person: "", phone: "", email: "", address: "", note: "" };
 
 export default function SupplierPage() {
   const supabase = useMemo(() => createClient(), []);
+  const confirm = useConfirm();
   const [rows, setRows] = useState<Supplier[]>([]);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [form, setForm] = useState({ ...kosong });
 
-  const muat = async () => {
+  const muat = useCallback(async () => {
     const { data, error } = await supabase.from("suppliers").select("*").order("name");
     if (error) toast.error(error.message);
     setRows((data as Supplier[]) ?? []);
     setLoading(false);
-  };
+  }, [supabase]);
 
   useEffect(() => {
     muat();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [muat]);
 
   const simpan = async () => {
     if (!form.name.trim()) return toast.error("Nama supplier wajib diisi");
@@ -53,11 +55,100 @@ export default function SupplierPage() {
     muat();
   };
 
+  const columns: Column<Supplier>[] = [
+    {
+      key: "nama",
+      header: "Supplier",
+      sort: (s) => s.name,
+      cell: (s) => (
+        <div className="flex items-center gap-3">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-muted font-display text-[11px] font-extrabold text-dim">
+            {s.name.slice(0, 2).toUpperCase()}
+          </span>
+          <span>
+            <span className="block font-semibold text-ink">{s.name}</span>
+            <span className="block text-[11px] text-dim">{s.contact_person ?? "tanpa kontak"}</span>
+          </span>
+        </div>
+      ),
+    },
+    {
+      key: "kontak",
+      header: "Kontak",
+      cell: (s) => (
+        <div className="space-y-0.5 text-[12px] text-dim">
+          {s.phone && (
+            <p className="flex items-center gap-1.5 font-mono">
+              <Phone className="h-3 w-3" /> {s.phone}
+            </p>
+          )}
+          {s.email && (
+            <p className="flex items-center gap-1.5">
+              <Mail className="h-3 w-3" /> {s.email}
+            </p>
+          )}
+          {!s.phone && !s.email && "-"}
+        </div>
+      ),
+    },
+    { key: "alamat", header: "Alamat", cell: (s) => <span className="text-dim">{s.address ?? "-"}</span> },
+    { key: "note", header: "Catatan", cell: (s) => <span className="text-dim">{s.note ?? "-"}</span> },
+    {
+      key: "aksi",
+      header: "",
+      align: "right",
+      cell: (s) => (
+        <div className="flex justify-end gap-2">
+          <Button
+            size="sm"
+            variant="outline"
+            data-testid={`edit-supplier-${s.id}`}
+            onClick={() => {
+              setEditId(s.id);
+              setForm({
+                name: s.name,
+                contact_person: s.contact_person ?? "",
+                phone: s.phone ?? "",
+                email: s.email ?? "",
+                address: s.address ?? "",
+                note: s.note ?? "",
+              });
+              setOpen(true);
+            }}
+          >
+            <Pencil className="h-3 w-3" />
+          </Button>
+          <Button
+            size="sm"
+            variant="danger"
+            data-testid={`delete-supplier-${s.id}`}
+            onClick={async () => {
+              const ok = await confirm({
+                title: `Hapus supplier "${s.name}"?`,
+                description: "Produk yang terkait supplier ini akan menjadi tanpa supplier.",
+                confirmText: "Hapus supplier",
+                tone: "danger",
+              });
+              if (!ok) return;
+              const { error } = await supabase.from("suppliers").delete().eq("id", s.id);
+              if (error) return toast.error(error.message);
+              toast.success("Supplier dihapus");
+              muat();
+            }}
+          >
+            <Trash2 className="h-3 w-3" />
+          </Button>
+        </div>
+      ),
+    },
+  ];
+
   return (
-    <div className="p-8">
+    <div className="p-4 sm:p-6 lg:p-8">
       <PageHeader
+        eyebrow="Inventori"
         title="Supplier"
-        subtitle="Daftar pemasok barang beserta kontaknya."
+        subtitle="Daftar pemasok barang beserta kontak yang bisa dihubungi saat restock."
         action={
           <Button
             data-testid="add-supplier"
@@ -72,76 +163,19 @@ export default function SupplierPage() {
         }
       />
 
-      <Panel className="overflow-hidden">
-        {loading ? (
-          <Spinner />
-        ) : rows.length === 0 ? (
-          <Empty text="Belum ada supplier." />
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="border-b border-zinc-200 bg-zinc-50">
-                <tr className="text-left text-[11px] uppercase tracking-[0.14em] text-zinc-500">
-                  <th className="px-5 py-3 font-semibold">Nama</th>
-                  <th className="px-5 py-3 font-semibold">Kontak</th>
-                  <th className="px-5 py-3 font-semibold">Telepon</th>
-                  <th className="px-5 py-3 font-semibold">Email</th>
-                  <th className="px-5 py-3 font-semibold">Alamat</th>
-                  <th className="px-5 py-3" />
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((s) => (
-                  <tr key={s.id} data-testid={`supplier-row-${s.id}`} className="border-b border-zinc-100 last:border-0 hover:bg-zinc-50">
-                    <td className="px-5 py-3 font-semibold text-zinc-900">{s.name}</td>
-                    <td className="px-5 py-3 text-zinc-600">{s.contact_person ?? "-"}</td>
-                    <td className="px-5 py-3 tabular-nums text-zinc-600">{s.phone ?? "-"}</td>
-                    <td className="px-5 py-3 text-zinc-600">{s.email ?? "-"}</td>
-                    <td className="px-5 py-3 text-zinc-500">{s.address ?? "-"}</td>
-                    <td className="px-5 py-3">
-                      <div className="flex justify-end gap-2">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          data-testid={`edit-supplier-${s.id}`}
-                          onClick={() => {
-                            setEditId(s.id);
-                            setForm({
-                              name: s.name,
-                              contact_person: s.contact_person ?? "",
-                              phone: s.phone ?? "",
-                              email: s.email ?? "",
-                              address: s.address ?? "",
-                              note: s.note ?? "",
-                            });
-                            setOpen(true);
-                          }}
-                        >
-                          <Pencil className="h-3 w-3" />
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="danger"
-                          data-testid={`delete-supplier-${s.id}`}
-                          onClick={async () => {
-                            if (!confirm(`Hapus supplier "${s.name}"?`)) return;
-                            const { error } = await supabase.from("suppliers").delete().eq("id", s.id);
-                            if (error) return toast.error(error.message);
-                            toast.success("Supplier dihapus");
-                            muat();
-                          }}
-                        >
-                          <Trash2 className="h-3 w-3" />
-                        </Button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </Panel>
+      <DataTable
+        testId="supplier-table"
+        rows={rows}
+        columns={columns}
+        keyOf={(s) => s.id}
+        loading={loading}
+        search
+        searchText={(s) => `${s.name} ${s.contact_person ?? ""} ${s.phone ?? ""} ${s.email ?? ""}`}
+        searchPlaceholder="Cari supplier..."
+        rowTestId={(s) => `supplier-row-${s.id}`}
+        emptyText="Belum ada supplier"
+        emptyHint="Tambahkan pemasok agar pembelian stok lebih mudah dilacak."
+      />
 
       <Modal
         open={open}
@@ -162,7 +196,7 @@ export default function SupplierPage() {
             />
           </Field>
           <Field label="Telepon">
-            <Input data-testid="supplier-phone" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
+            <Input data-testid="supplier-phone" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} className="font-mono" />
           </Field>
           <Field label="Email">
             <Input data-testid="supplier-email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
@@ -180,7 +214,7 @@ export default function SupplierPage() {
             <Textarea data-testid="supplier-note" value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} />
           </Field>
         </div>
-        <div className="mt-6 flex justify-end gap-2">
+        <div className="mt-6 flex justify-end gap-2 border-t border-line pt-5">
           <Button variant="outline" onClick={() => setOpen(false)}>
             Batal
           </Button>

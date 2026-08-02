@@ -52,13 +52,13 @@ export function BarcodeScanner({
 
   return (
     <Modal open={open} onClose={onClose} title="Pindai Barcode" testId="scanner-modal">
-      <div className="overflow-hidden rounded-md border border-zinc-200 bg-zinc-900">
+      <div className="overflow-hidden rounded-xl border border-line bg-zinc-950">
         <video ref={videoRef} data-testid="scanner-video" className="h-64 w-full object-cover" muted playsInline />
       </div>
       {error ? (
-        <p className="mt-3 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>
+        <p className="mt-3 rounded-xl border border-bad/25 bg-bad-soft px-3 py-2 text-sm font-semibold text-bad">{error}</p>
       ) : (
-        <p className="mt-3 text-sm text-zinc-500">
+        <p className="mt-3 text-sm text-dim">
           Arahkan kamera ke barcode produk. Anda juga bisa memakai pemindai USB: cukup pindai saat kolom pencarian aktif.
         </p>
       )}

@@ -174,7 +174,7 @@ export default function LaporanPage() {
                     tickFormatter={(v) => `${Number(v) / 1000}rb`}
                   />
                   <Tooltip
-                    formatter={(v: number) => rupiah(v)}
+                    formatter={(v) => rupiah(Number(v))}
                     contentStyle={{ borderRadius: 8, border: "1px solid #e4e4e7", fontSize: 12 }}
                   />
                   <Area type="monotone" dataKey="omzet" stroke="#4f46e5" strokeWidth={2} fill="url(#omzetFill)" />
@@ -198,7 +198,7 @@ export default function LaporanPage() {
                         <Cell key={i} fill={WARNA[i % WARNA.length]} />
                       ))}
                     </Pie>
-                    <Tooltip formatter={(v: number) => rupiah(v)} contentStyle={{ borderRadius: 8, fontSize: 12 }} />
+                    <Tooltip formatter={(v) => rupiah(Number(v))} contentStyle={{ borderRadius: 8, fontSize: 12 }} />
                   </PieChart>
                 </ResponsiveContainer>
               </div>

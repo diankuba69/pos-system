@@ -1,0 +1,68 @@
+{
+  "summary": "Frontend-only E2E testing of KasirPro POS (Next.js + Supabase) via public preview URL using Playwright. Covered: auth (admin/kasir/wrong password), role-based sidebar, route protection, POS search/category filter, cart qty/remove/clear, stock limit guard, discount, tax, cash/QRIS/card checkout, receipt (invoice, totals, print/WA/email), stock decrement after sale, /produk product+category CRUD, /stok masuk/keluar/opname + low-stock list, /supplier CRUD, /transaksi date filters + view receipt, /laporan stat cards + 3 charts + 7/14/30 ranges, /pengaturan tax persistence, /pengguna role change, and kasir privilege-escalation probes. 19 of 19 requested functional flows behave correctly; 3 authorization/UX defects and 1 reproducible dropdown UI bug found.",
+  "backend_issues": { "critical": [], "minor": [] },
+  "frontend_issues": {
+    "ui_bugs": [
+      {
+        "component": "ui/field.tsx Select (used in stok/produk modals)",
+        "issue": "Select is rendered inside Field's <label> wrapper, so clicking an option bubbles to the label which re-dispatches the click to the trigger button -> dropdown immediately re-opens after every selection and then overlays the fields below it (Tipe penyesuaian / Jumlah become unclickable until the user clicks elsewhere). Reproduced 100% of the time on /stok (stock-product, stock-type) and /produk (form-category, form-supplier). Fix: render Field label as <div>+<span> (or add htmlFor/id) instead of wrapping the custom Select in <label>, and stopPropagation on option click.",
+        "selector": "[data-testid='stock-product'], [data-testid='stock-type'], [data-testid='form-category']",
+        "priority": "HIGH"
+      },
+      {
+        "component": "pengaturan/page.tsx + pengguna/page.tsx (silent RLS failure)",
+        "issue": "Supabase .update() blocked by RLS returns no error (0 rows matched), so the UI shows a false success toast. As kasir: saving tax=25 on /pengaturan shows 'Pengaturan disimpan' but value reverts to 0 after reload; changing admin@toko.com role shows 'Peran diperbarui' but nothing changed. Use .select() on update and assert rows affected, or check role before allowing the action.",
+        "selector": "[data-testid='save-settings'], [data-testid='role-select-<id>']",
+        "priority": "HIGH"
+      }
+    ],
+    "integration_issues": [
+      {
+        "flow": "Role based route authorization",
+        "issue": "(app)/layout.tsx only checks session, not role. A logged-in kasir can open /produk, /stok, /supplier, /laporan, /pengguna, /pengaturan directly by URL and the pages fully render server data (product cost prices, suppliers, all user emails, full sales reports). Sidebar hiding is the only protection. Add an isAdmin guard/redirect in the layout or per-page.",
+        "affected_selectors": ["nav-produk", "nav-pengguna", "nav-laporan"]
+      },
+      {
+        "flow": "adjust_stock RPC authorization (kasir privilege escalation)",
+        "issue": "supabase/schema.sql adjust_stock() is SECURITY DEFINER with only an auth.uid() null check - no is_admin() check. Verified live: kasir@toko.com opened /stok by URL and successfully raised Keripik Kentang 45 -> 46 with a stock_movements row created ('Stok diperbarui'). Products table writes are correctly blocked by RLS, so this RPC is the escalation path. Add `if not public.is_admin() then raise exception` inside adjust_stock (stock restored to 45 by the tester).",
+        "affected_selectors": ["open-adjust-stock", "save-stock"]
+      }
+    ],
+    "design_issues": [
+      {
+        "screen": "/transaksi filters",
+        "issues": ["filter-from / filter-to use native <input type=date> browser pickers instead of the project's own calendar/Select styling - inconsistent with the rest of the design system"]
+      },
+      {
+        "screen": "/produk category modal",
+        "issues": ["Deleting a category silently un-assigns it from products (no confirm dialog and no warning, unlike product/supplier delete which use confirm()). Tester accidentally removed the seeded 'Makanan' category this way; it was re-created and Burger Sapi + Nasi Goreng Spesial were re-assigned."]
+      },
+      {
+        "screen": "/kasir product grid",
+        "issues": ["4 of 8 seeded products have no image_url and fall back to grey 2-letter initials, so the grid looks half-empty/inconsistent (Donat Cokelat, Es Teh Manis, Keripik Kentang, Nasi Goreng Spesial)"]
+      }
+    ]
+  },
+  "test_report_links": ["/app/test_reports/iteration_1.json"],
+  "action_items": [
+    "Add admin role guard (redirect non-admins) for /produk, /stok, /supplier, /laporan, /pengguna, /pengaturan - currently reachable by kasir via direct URL",
+    "Add is_admin() check inside adjust_stock() SECURITY DEFINER function - kasir can currently change stock",
+    "Stop showing success toasts when an RLS-blocked update affects 0 rows (/pengaturan save, /pengguna role change) - use .update(...).select() and verify returned rows",
+    "Fix Select-inside-<label> bug in components/ui/field.tsx: dropdown re-opens after selecting and blocks the fields underneath",
+    "Optional: add confirm dialog for category deletion and replace native date inputs with the design-system picker"
+  ],
+  "critical_code_review_comments": [
+    "supabase/schema.sql: adjust_stock() is SECURITY DEFINER without an authorization check - any authenticated user can mutate products.stock",
+    "src/app/(app)/layout.tsx: authorization is session-only; role is not enforced on admin routes",
+    "src/components/ui/field.tsx: Field wraps children in <label>, which breaks the custom Select (label re-fires click on the trigger button)",
+    "All pages ignore the fact that a Supabase update blocked by RLS returns error=null; success paths must verify affected rows"
+  ],
+  "updated_files": [],
+  "success_rate": { "backend": "not tested (frontend-only request)", "frontend": "100% of 19 requested functional flows passed; 4 additional defects found (2 authorization, 1 false-success UX, 1 dropdown UI)" },
+  "seed_data_creation": "Temporary data created and cleaned up: product TEST_Produk QA (created, edited, deleted), category TEST_Kategori (created, deleted), supplier TEST_Supplier QA (created, edited, deleted). Test transactions INV-20260802-0008..0012 remain in the DB (cannot be deleted from the UI). Restorations performed: category 'Makanan' re-created and re-assigned to Burger Sapi + Nasi Goreng Spesial, Croissant Butter min_stock back to 5, Keripik Kentang stock back to 45, store tax back to 0 and name 'KasirPro Store', kasir@toko.com role back to kasir.",
+  "should_call_test_agent_after_fix": true,
+  "should_main_agent_self_test": false,
+  "test_credentials": "admin@toko.com/admin123 and kasir@toko.com/kasir123 from /app/memory/test_credentials.md - both valid and working",
+  "context_for_next_testing_agent": "App is served from a production build; after code edits run `sudo supervisorctl restart frontend` and wait ~60s. Custom Select is NOT a native <select>: click [data-testid='<id>'] then [data-testid='<id>-option-<value>'], and afterwards click the modal title to dismiss the re-opened dropdown (known bug). Product/supplier delete use window.confirm - register page.on('dialog', accept). Verified working: login+role sidebar, route protection when logged out, POS filters, cart math, stock guard, discount, tax 11% (8.000 -> 8.880), cash/QRIS/card checkout, stock decrement, receipt print/WA/mailto, produk & supplier & category CRUD, stok masuk/keluar/opname + low-stock list, transaksi filters + receipt view, laporan charts + 7/14/30 ranges, pengaturan persistence, pengguna role change. Re-test after fixes: role guard on admin routes, adjust_stock admin check, false-success toasts, Select dropdown.",
+  "rca_of_the_issue": "1) Authorization is enforced only in the UI (AppShell hides links) and partially in Postgres RLS; (app)/layout.tsx never checks profile.role, so admin routes are reachable by URL. 2) adjust_stock() runs as SECURITY DEFINER, bypassing the products_write is_admin() RLS policy, giving cashiers full stock control. 3) PostgREST returns 204/empty (error=null) when an UPDATE matches no rows due to RLS, and the pages treat that as success -> false 'saved' toasts. 4) components/ui/field.tsx Field renders <label> around the custom button-based Select; clicking an option bubbles to the label which forwards a synthetic click to the first labelable control (the trigger), toggling the dropdown open again and covering the fields below."
+}

@@ -154,6 +154,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </button>
             <button
               onClick={toggleSidebar}
+              data-testid="sidebar-toggle"
               aria-label="Lipat sidebar"
               className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-line text-dim transition-colors duration-150 hover:text-ink"
             >

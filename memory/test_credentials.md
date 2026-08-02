@@ -27,3 +27,7 @@ Kasir: hanya Kasir + Transaksi (menu lain disembunyikan; RLS menolak tulis maste
 Aplikasi dijalankan dari PRODUCTION BUILD (`next build` + `next start`) karena dev-mode
 HMR tidak stabil di balik proxy preview. Setelah mengubah kode:
 `sudo supervisorctl restart frontend` (script start otomatis menjalankan `yarn build`).
+
+## Fitur baru (iterasi 2)
+- Barcode: pindai SKU (mis. BVG-001) di kolom pencarian /kasir lalu Enter, atau tombol Pindai untuk kamera.
+- Shift kas: /kasir menampilkan gate "Buka Kas Dulu"; kelola & tutup kas di /kas.

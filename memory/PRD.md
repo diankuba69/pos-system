@@ -35,3 +35,10 @@ Pilihan user:
 - P0: jalankan `patch_01_admin_checks.sql` (blokir `adjust_stock` untuk non-admin + gambar produk contoh).
 - P1: kirim struk otomatis via email (Resend/SendGrid) & WhatsApp API; scan barcode; shift/kas kasir (buka-tutup kas); void/refund transaksi.
 - P2: cetak thermal langsung (ESC/POS), multi-outlet, ekspor laporan Excel/PDF, diskon per item & promo, pelanggan/loyalitas.
+
+## Iterasi 2 (2 Agu 2026) — Barcode & Shift Kas
+- Scan barcode: input pencarian mendukung pemindai USB (SKU + Enter) dan pemindai kamera (@zxing/browser) via tombol Pindai.
+- Shift kas: tabel `shifts`, RPC `open_shift()`/`close_shift()`, gate "Buka Kas Dulu" di /kasir, halaman /kas (statistik shift aktif, tutup kas dengan cek uang fisik vs seharusnya + selisih, riwayat shift).
+- `create_transaction()` kini wajib ada shift terbuka; transaksi terikat `shift_id`.
+- Diuji testing agent iterasi 2 (12/12 lulus) dan iterasi 3 (3/3 perbaikan minor terverifikasi).
+- Sisa backlog: hapus tampilan riwayat shift kasir lain untuk role kasir, date picker desain sendiri di /transaksi, kirim struk otomatis via email/WA API, void/refund, ekspor laporan.

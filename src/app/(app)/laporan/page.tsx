@@ -71,7 +71,7 @@ export default function LaporanPage() {
       .select("*, transaction_items(*)")
       .eq("organization_id", orgId!)
       .gte("created_at", mulaiLalu.toISOString())
-      .order("created_at")
+      .order("created_at", { ascending: false })
       .limit(5000);
     if (lingkup === "outlet") tq = tq.eq("outlet_id", outletId!);
 

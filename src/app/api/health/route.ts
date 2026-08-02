@@ -5,12 +5,9 @@ export async function GET() {
   const key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
 
   if (!url || !key) {
+    console.error('Health check gagal: env Supabase publik belum lengkap')
     return NextResponse.json(
-      {
-        status: 'error',
-        message:
-          'Missing Supabase env vars. Isi NEXT_PUBLIC_SUPABASE_URL dan NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY di .env.local',
-      },
+      { status: 'error', message: 'Layanan autentikasi tidak dapat dihubungi' },
       { status: 500 }
     )
   }

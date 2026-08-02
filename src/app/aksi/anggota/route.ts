@@ -1,4 +1,4 @@
-import { getClientIp, terlaluSering } from "@/lib/rate-limit";
+import { terlaluSering } from "@/lib/rate-limit";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { getVerifiedCaller } from "@/lib/supabase/request-auth";
 import { NextResponse } from "next/server";
@@ -45,9 +45,6 @@ async function pastikanAdmin(organizationId: string, userId: string) {
 }
 
 export async function PATCH(request: Request) {
-  if (terlaluSering(`anggota:patch:${getClientIp(request)}`, 20, 60_000)) {
-    return json("rate_limited", 429);
-  }
   let verified: Awaited<ReturnType<typeof getVerifiedCaller>>;
   try {
     verified = await getVerifiedCaller(request);
@@ -56,6 +53,11 @@ export async function PATCH(request: Request) {
     return json("server_configuration_error", 500);
   }
   if (!verified.user) return json("unauthorized", 401);
+
+  // Dibatasi per akun admin yang terautentikasi (bukan IP, karena header IP klien bisa dipalsukan).
+  if (terlaluSering(`anggota:patch:${verified.user.id}`, 20, 60_000)) {
+    return json("rate_limited", 429);
+  }
 
   let body: Record<string, unknown>;
   try {
@@ -88,15 +90,18 @@ export async function PATCH(request: Request) {
   }
 
   // Sandi hasil reset admin bersifat sementara: anggota wajib menggantinya saat login berikutnya.
-  await supabaseAdmin.from("profiles").update({ must_change_password: true }).eq("id", targetUserId);
+  const { error: flagError } = await supabaseAdmin
+    .from("profiles")
+    .update({ must_change_password: true })
+    .eq("id", targetUserId);
+  if (flagError) {
+    console.error("Gagal menandai wajib ganti sandi", { targetUserId, message: flagError.message });
+  }
 
   return json(null, 200, { ok: true });
 }
 
 export async function POST(request: Request) {
-  if (terlaluSering(`anggota:post:${getClientIp(request)}`, 20, 60_000)) {
-    return json("rate_limited", 429);
-  }
   let verified: Awaited<ReturnType<typeof getVerifiedCaller>>;
   try {
     verified = await getVerifiedCaller(request);
@@ -105,6 +110,11 @@ export async function POST(request: Request) {
     return json("server_configuration_error", 500);
   }
   if (!verified.user) return json("unauthorized", 401);
+
+  // Dibatasi per akun admin yang terautentikasi (bukan IP, karena header IP klien bisa dipalsukan).
+  if (terlaluSering(`anggota:post:${verified.user.id}`, 20, 60_000)) {
+    return json("rate_limited", 429);
+  }
 
   let body: Record<string, unknown>;
   try {

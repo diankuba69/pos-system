@@ -2,7 +2,7 @@
 
 import { useAuth } from "@/components/AuthProvider";
 import { Button } from "@/components/ui/button";
-import { Field, Input } from "@/components/ui/field";
+import { Field, Input, PasswordInput } from "@/components/ui/field";
 import { Badge, PageHeader, Panel, SectionTitle } from "@/components/ui/misc";
 import { createClient } from "@/lib/supabase/client";
 import { pesanError, tanggal } from "@/lib/utils";
@@ -138,18 +138,16 @@ export default function ProfilPage() {
           </SectionTitle>
           <div className="space-y-4">
             <Field label="Kata sandi saat ini">
-              <Input
+              <PasswordInput
                 data-testid="sandi-lama"
-                type="password"
                 value={lama}
                 onChange={(e) => setLama(e.target.value)}
                 placeholder="••••••••"
               />
             </Field>
             <Field label="Kata sandi baru (min. 8 karakter)">
-              <Input
+              <PasswordInput
                 data-testid="sandi-baru"
-                type="password"
                 value={baru}
                 onChange={(e) => setBaru(e.target.value)}
                 placeholder="••••••••"
@@ -170,9 +168,8 @@ export default function ProfilPage() {
               </div>
             )}
             <Field label="Ulangi kata sandi baru">
-              <Input
+              <PasswordInput
                 data-testid="sandi-ulang"
-                type="password"
                 value={ulang}
                 onChange={(e) => setUlang(e.target.value)}
                 placeholder="••••••••"

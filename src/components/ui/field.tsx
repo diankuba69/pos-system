@@ -1,7 +1,7 @@
 "use client";
 
 import { cn } from "@/lib/utils";
-import { Check, ChevronDown } from "lucide-react";
+import { Check, ChevronDown, Eye, EyeOff } from "lucide-react";
 import {
   useEffect,
   useRef,
@@ -26,6 +26,27 @@ const base =
 
 export function Input({ className, ...props }: ComponentPropsWithRef<"input">) {
   return <input className={cn(base, "h-11", className)} {...props} />;
+}
+
+/** Input sandi dengan tombol tampilkan/sembunyikan (ikon mata) agar mudah dicek user. */
+export function PasswordInput({ className, ...props }: ComponentPropsWithRef<"input">) {
+  const [show, setShow] = useState(false);
+  const testId = (props as Record<string, unknown>)["data-testid"];
+  return (
+    <div className="relative">
+      <Input type={show ? "text" : "password"} className={cn("pr-11", className)} {...props} />
+      <button
+        type="button"
+        data-testid={typeof testId === "string" ? `${testId}-toggle` : undefined}
+        onClick={() => setShow((s) => !s)}
+        tabIndex={-1}
+        aria-label={show ? "Sembunyikan kata sandi" : "Tampilkan kata sandi"}
+        className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-1.5 text-dim transition-colors duration-150 hover:text-ink"
+      >
+        {show ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+      </button>
+    </div>
+  );
 }
 
 export function Textarea({ className, ...props }: TextareaHTMLAttributes<HTMLTextAreaElement>) {

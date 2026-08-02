@@ -2,7 +2,7 @@
 
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { Button } from "@/components/ui/button";
-import { Field, Input } from "@/components/ui/field";
+import { Field, Input, PasswordInput } from "@/components/ui/field";
 import { createClient } from "@/lib/supabase/client";
 import { pesanError } from "@/lib/utils";
 import { ArrowRight, BarChart3, ScanLine, ShieldCheck, Sparkles } from "lucide-react";
@@ -109,9 +109,8 @@ export default function MasukPage() {
               />
             </Field>
             <Field label="Kata sandi">
-              <Input
+              <PasswordInput
                 data-testid="login-password"
-                type="password"
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}

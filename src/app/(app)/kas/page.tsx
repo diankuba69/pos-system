@@ -41,9 +41,12 @@ export default function KasPage() {
 
   const muat = useCallback(async () => {
     if (!session?.user) return;
+    // Kasir hanya melihat shift miliknya sendiri; admin melihat semua kasir.
+    let riwayatQuery = supabase.from("shifts").select("*").order("opened_at", { ascending: false }).limit(30);
+    if (!isAdmin) riwayatQuery = riwayatQuery.eq("cashier_id", session.user.id);
     const [a, h] = await Promise.all([
       supabase.from("shifts").select("*").eq("cashier_id", session.user.id).eq("status", "buka").maybeSingle(),
-      supabase.from("shifts").select("*").order("opened_at", { ascending: false }).limit(30),
+      riwayatQuery,
     ]);
     const shift = (a.data as Shift) ?? null;
     setAktif(shift);
@@ -61,7 +64,7 @@ export default function KasPage() {
       setJumlahTx(0);
     }
     setLoading(false);
-  }, [supabase, session]);
+  }, [supabase, session, isAdmin]);
 
   useEffect(() => {
     muat();
@@ -148,7 +151,7 @@ export default function KasPage() {
 
       <Panel className="overflow-hidden">
         <h3 className="border-b border-zinc-200 px-5 py-3 font-display text-sm font-extrabold uppercase tracking-[0.14em] text-zinc-500">
-          Riwayat shift {isAdmin ? "(semua kasir)" : ""}
+          Riwayat shift {isAdmin ? "(semua kasir)" : "(shift Anda)"}
         </h3>
         {riwayat.length === 0 ? (
           <Empty text="Belum ada riwayat shift." />

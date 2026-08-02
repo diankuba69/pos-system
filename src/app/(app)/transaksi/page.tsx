@@ -12,7 +12,13 @@ import { Eye, ReceiptText, Wallet } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
-const hariIni = () => new Date().toISOString().slice(0, 10);
+// Tanggal & batas periode dihitung memakai zona waktu lokal (WIB), bukan UTC.
+const hariIni = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+};
+const awalHari = (tgl: string) => new Date(`${tgl}T00:00:00`).toISOString();
+const akhirHari = (tgl: string) => new Date(`${tgl}T23:59:59.999`).toISOString();
 
 export default function TransaksiPage() {
   const supabase = useMemo(() => createClient(), []);
@@ -29,8 +35,8 @@ export default function TransaksiPage() {
       supabase
         .from("transactions")
         .select("*, transaction_items(*)")
-        .gte("created_at", `${dari}T00:00:00`)
-        .lte("created_at", `${sampai}T23:59:59.999`)
+        .gte("created_at", awalHari(dari))
+        .lte("created_at", akhirHari(sampai))
         .order("created_at", { ascending: false }),
       supabase.from("store_settings").select("*").eq("id", 1).maybeSingle(),
     ]);

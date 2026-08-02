@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/client";
 import type { Profile } from "@/lib/types";
 import type { Session } from "@supabase/supabase-js";
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { toast } from "sonner";
 
 type Ctx = {
   session: Session | null;
@@ -39,10 +40,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setLoading(false);
     });
 
-    const { data: sub } = supabase.auth.onAuthStateChange(async (_event, s) => {
+    // Jangan await panggilan Supabase di dalam callback ini (risiko deadlock saat refresh token).
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, s) => {
       setSession(s ?? null);
-      if (s?.user) await loadProfile(s.user.id);
-      else setProfile(null);
+      if (s?.user) {
+        const uid = s.user.id;
+        setTimeout(() => {
+          void loadProfile(uid);
+        }, 0);
+      } else {
+        setProfile(null);
+      }
     });
 
     return () => {
@@ -50,6 +58,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       sub.subscription.unsubscribe();
     };
   }, [supabase, loadProfile]);
+
+  // Akun yang dinonaktifkan admin langsung dikeluarkan dari aplikasi.
+  useEffect(() => {
+    if (profile && profile.is_active === false) {
+      toast.error("Akun Anda dinonaktifkan. Hubungi admin.");
+      setProfile(null);
+      setSession(null);
+      void supabase.auth.signOut();
+    }
+  }, [profile, supabase]);
 
   const value: Ctx = {
     session,

@@ -46,3 +46,8 @@ next-env.d.ts
 credentials.json
 *.key
 .credentials
+
+# Artefak platform Emergent & kredensial lokal (jangan dicommit)
+/memory/
+/test_reports/
+/.screenshots/

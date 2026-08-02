@@ -12,6 +12,27 @@ Prisma dipakai **hanya untuk mengelola skema database**. Runtime aplikasi tetap 
 
 Env yang dibutuhkan (lihat `.env.example`): `DATABASE_URL` (pooler 6543) dan `DIRECT_URL` (5432).
 
+## Satu sumber kebenaran
+
+**`prisma/migrations/*/migration.sql` adalah satu-satunya sumber kebenaran** yang dieksekusi ke
+database. `prisma/schema.prisma` hanya cermin struktur tabel hasil introspeksi — ia **tidak**
+memuat RLS policy, trigger, maupun fungsi RPC, padahal di situlah seluruh logika keamanan berada.
+Karena itu **jangan pernah** memakai `prisma migrate dev`/`diff` untuk membuat migration otomatis.
+
+File di `supabase/*.sql` adalah **salinan yang bisa dibaca/ditempel manual di Supabase SQL Editor**;
+setiap perubahan harus ada di kedua tempat dengan isi identik:
+
+| Patch | Migration Prisma |
+|---|---|
+| `supabase/schema.sql` + `patch_01` + `patch_02` | `prisma/migrations/0_init/migration.sql` |
+| `supabase/patch_03_security.sql` | `prisma/migrations/20260603000000_security_hardening/migration.sql` |
+
+## Catatan repo
+
+Folder `frontend/`, `backend/`, dan `.emergent/` adalah berkas runner platform Emergent (bukan
+bagian aplikasi Next.js) dan diabaikan oleh Vercel. Folder `memory/`, `test_reports/`, dan
+`.screenshots/` sudah masuk `.gitignore` karena berisi catatan kerja & kredensial uji.
+
 ## Perintah
 
 ```bash

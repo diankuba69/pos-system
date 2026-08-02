@@ -23,7 +23,7 @@ import {
   X,
 } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
 type Line = { product: Product; qty: number };
@@ -50,6 +50,7 @@ export default function KasirPage() {
   const [pelanggan, setPelanggan] = useState("");
   const [kontak, setKontak] = useState("");
   const [proses, setProses] = useState(false);
+  const prosesRef = useRef(false);
   const [struk, setStruk] = useState<Transaction | null>(null);
 
   const muat = async () => {
@@ -149,6 +150,7 @@ export default function KasirPage() {
     );
 
   const bayar = async () => {
+    if (prosesRef.current) return;
     if (lines.length === 0) return;
     if (!shift) {
       toast.error("Kas belum dibuka");
@@ -158,41 +160,45 @@ export default function KasirPage() {
       toast.error("Uang dibayar kurang dari total");
       return;
     }
+    prosesRef.current = true;
     setProses(true);
-    const { data, error } = await supabase.rpc("create_transaction", {
-      p_items: lines.map((l) => ({ product_id: l.product.id, qty: l.qty })),
-      p_payment_method: metode,
-      p_paid_amount: dibayarNum,
-      p_discount: diskonNum,
-      p_customer_name: pelanggan || null,
-      p_customer_contact: kontak || null,
-      p_note: null,
-    });
-    if (error) {
-      setProses(false);
-      toast.error(error.message);
-      if (error.message.includes("Kas belum dibuka")) {
-        setBayarOpen(false);
-        setShift(null);
-        muat();
+    try {
+      const { data, error } = await supabase.rpc("create_transaction", {
+        p_items: lines.map((l) => ({ product_id: l.product.id, qty: l.qty })),
+        p_payment_method: metode,
+        p_paid_amount: dibayarNum,
+        p_discount: diskonNum,
+        p_customer_name: pelanggan || null,
+        p_customer_contact: kontak || null,
+        p_note: null,
+      });
+      if (error) {
+        toast.error(error.message);
+        if (error.message.includes("Kas belum dibuka")) {
+          setBayarOpen(false);
+          setShift(null);
+          muat();
+        }
+        return;
       }
-      return;
+      const { data: tx } = await supabase
+        .from("transactions")
+        .select("*, transaction_items(*)")
+        .eq("id", data as string)
+        .single();
+      setBayarOpen(false);
+      setStruk(tx as Transaction);
+      setLines([]);
+      setDiskon("");
+      setDibayar("");
+      setPelanggan("");
+      setKontak("");
+      toast.success("Transaksi berhasil");
+      muat();
+    } finally {
+      prosesRef.current = false;
+      setProses(false);
     }
-    const { data: tx } = await supabase
-      .from("transactions")
-      .select("*, transaction_items(*)")
-      .eq("id", data as string)
-      .single();
-    setProses(false);
-    setBayarOpen(false);
-    setStruk(tx as Transaction);
-    setLines([]);
-    setDiskon("");
-    setDibayar("");
-    setPelanggan("");
-    setKontak("");
-    toast.success("Transaksi berhasil");
-    muat();
   };
 
   return (

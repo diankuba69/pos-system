@@ -36,7 +36,7 @@ import { toast } from "sonner";
 
 type Line = { product: ProductStock; qty: number };
 type Method = "tunai" | "qris" | "kartu";
-type Hold = { id: string; lines: Line[]; at: string; label: string };
+type Hold = { id: string; lines: Line[]; diskon: string; at: string; label: string };
 
 const SHORTCUTS: [string, string][] = [
   ["F2", "Fokus ke kolom cari / barcode"],
@@ -194,7 +194,7 @@ export default function KasirPage() {
   const tahan = () => {
     if (lines.length === 0) return toast.error("Keranjang masih kosong");
     setHolds((prev) => [
-      { id: crypto.randomUUID(), lines, at: new Date().toISOString(), label: `${jumlahItem} item · ${rupiah(subtotal)}` },
+      { id: crypto.randomUUID(), lines, diskon, at: new Date().toISOString(), label: `${jumlahItem} item · ${rupiah(subtotal)}` },
       ...prev,
     ]);
     setLines([]);
@@ -206,13 +206,14 @@ export default function KasirPage() {
   const pulihkan = (h: Hold) => {
     if (lines.length > 0) {
       setHolds((prev) => [
-        { id: crypto.randomUUID(), lines, at: new Date().toISOString(), label: `${jumlahItem} item · ${rupiah(subtotal)}` },
+        { id: crypto.randomUUID(), lines, diskon, at: new Date().toISOString(), label: `${jumlahItem} item · ${rupiah(subtotal)}` },
         ...prev.filter((x) => x.id !== h.id),
       ]);
     } else {
       setHolds((prev) => prev.filter((x) => x.id !== h.id));
     }
     setLines(h.lines);
+    setDiskon(h.diskon);
     setHoldOpen(false);
     toast.success("Transaksi dilanjutkan");
   };
@@ -721,6 +722,22 @@ export default function KasirPage() {
           <span className="font-display text-base font-extrabold tabular-nums">{rupiah(total)}</span>
           <span className="rounded-full bg-bg/15 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.1em]">
             Lihat keranjang
+          </span>
+        </button>
+      )}
+
+      {lines.length === 0 && holds.length > 0 && !mobileCartOpen && (
+        <button
+          data-testid="mobile-hold-bar"
+          onClick={() => setHoldOpen(true)}
+          className="no-print fixed inset-x-3 bottom-[70px] z-50 flex items-center justify-between gap-3 rounded-2xl border border-line bg-surface px-4 py-3 text-ink shadow-[var(--shadow-pop)] lg:hidden"
+        >
+          <span className="flex items-center gap-2 text-sm font-bold">
+            <PauseCircle className="h-4 w-4 text-brand" />
+            {holds.length} transaksi ditahan
+          </span>
+          <span className="rounded-full bg-muted px-3 py-1 text-[11px] font-bold uppercase tracking-[0.1em] text-dim">
+            Lihat
           </span>
         </button>
       )}

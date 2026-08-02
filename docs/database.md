@@ -29,6 +29,7 @@ setiap perubahan harus ada di kedua tempat dengan isi identik:
 | `supabase/patch_04_active_select.sql` | `prisma/migrations/20260702120000_active_select_policies/migration.sql` |
 | `supabase/patch_05_gapless_invoice.sql` | `prisma/migrations/20260803000000_gapless_invoice/migration.sql` |
 | `supabase/patch_06_device_lock.sql` | `prisma/migrations/20260805000000_device_lock/migration.sql` |
+| `supabase/patch_07_fix_function_overloads.sql` | `prisma/migrations/20260806000000_fix_function_overloads/migration.sql` |
 
 ## Catatan repo
 

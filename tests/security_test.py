@@ -226,10 +226,25 @@ def stock_of(admin, pid):
     return admin["s"].get(f"{REST}/products?select=stock&id=eq.{pid}", timeout=30).json()[0]["stock"]
 
 
+TEST_DEVICE_ID = str(uuid.uuid4())
+
+
+@pytest.fixture(scope="session", autouse=True)
+def _lock_kasir_to_test_device(admin, kasir):
+    """patch_06/07: kasir must have locked_device_id set to call open_shift/create_transaction.
+    Lock to a synthetic UUID, unlock on teardown so the account is left free."""
+    # Ensure clean start
+    rpc(admin["s"], "admin_unlock_device", {"p_user_id": kasir["id"]})
+    r = rpc(kasir["s"], "check_and_lock_device", {"p_device_id": TEST_DEVICE_ID})
+    assert r.status_code in (200, 204), r.text[:300]
+    yield
+    rpc(admin["s"], "admin_unlock_device", {"p_user_id": kasir["id"]})
+
+
 class TestCreateTransactionValidation:
     @pytest.fixture(scope="class", autouse=True)
     def shift(self, kasir):
-        r = rpc(kasir["s"], "open_shift", {"p_opening_cash": 100000})
+        r = rpc(kasir["s"], "open_shift", {"p_opening_cash": 100000, "p_device_id": TEST_DEVICE_ID})
         assert r.status_code == 200, r.text[:300]
         return r.json()
 
@@ -238,6 +253,7 @@ class TestCreateTransactionValidation:
             "p_items": items, "p_payment_method": method,
             "p_paid_amount": paid, "p_discount": discount,
             "p_customer_name": "TEST_sec", "p_note": "TEST_sec",
+            "p_device_id": TEST_DEVICE_ID,
         })
 
     def test_qty_zero_or_negative_rejected(self, kasir, admin, product):

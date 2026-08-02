@@ -181,8 +181,29 @@ export async function DELETE(request: Request) {
       .select("id", { count: "exact", head: true })
       .eq("organization_id", organizationId)
       .eq("role", "admin")
+      .eq("is_active", true)
       .neq("user_id", targetUserId);
     if (!count) return json("last_admin", 400);
+  }
+
+  // Jika anggota ini juga tergabung di organisasi lain, cabut keanggotaan di organisasi ini saja
+  // (jangan hapus akun auth-nya, karena masih dipakai untuk login ke organisasi lain).
+  const { count: totalMemberships } = await supabaseAdmin
+    .from("organization_memberships")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", targetUserId);
+
+  if (totalMemberships && totalMemberships > 1) {
+    const { error: leaveError } = await supabaseAdmin
+      .from("organization_memberships")
+      .delete()
+      .eq("organization_id", organizationId)
+      .eq("user_id", targetUserId);
+    if (leaveError) {
+      console.error("Gagal mencabut keanggotaan", { targetUserId, message: leaveError.message });
+      return json("delete_failed", 502);
+    }
+    return json(null, 200, { ok: true });
   }
 
   // Menghapus auth.users cascade ke profiles & organization_memberships (FK on delete cascade).

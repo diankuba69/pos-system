@@ -108,12 +108,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const { data: sub } = supabase.auth.onAuthStateChange((_event, s) => {
       setSession(s ?? null);
       if (s?.user) {
+        setSiapTenant(false);
         const uid = s.user.id;
         setTimeout(() => void muatTenant(uid), 0);
       } else {
         setProfile(null);
         setMemberships([]);
         setOrgId(null);
+        setSiapTenant(true);
       }
     });
 

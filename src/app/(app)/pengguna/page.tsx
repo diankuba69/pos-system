@@ -10,7 +10,7 @@ import { Modal } from "@/components/ui/modal";
 import { createClient } from "@/lib/supabase/client";
 import type { Invitation, Membership } from "@/lib/types";
 import { angka, tanggal } from "@/lib/utils";
-import { Check, Copy, Info, MailPlus, RefreshCw, ShieldCheck, Smartphone, Trash2, Users } from "lucide-react";
+import { Check, Copy, Info, MailPlus, RefreshCw, ShieldCheck, Smartphone, Trash2, UserPlus, Users } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
@@ -24,6 +24,9 @@ export default function PenggunaPage() {
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({ email: "", role: "kasir", outlet_id: "" });
   const [kodeBaru, setKodeBaru] = useState<Invitation | null>(null);
+  const [akunOpen, setAkunOpen] = useState(false);
+  const [akun, setAkun] = useState({ full_name: "", email: "", password: "", role: "kasir", outlet_id: "" });
+  const [membuat, setMembuat] = useState(false);
 
   const muat = useCallback(async () => {
     if (!orgId) return;
@@ -109,6 +112,37 @@ export default function PenggunaPage() {
     setOpen(false);
     setForm({ email: "", role: "kasir", outlet_id: "" });
     toast.success("Undangan dibuat");
+    muat();
+  };
+
+  const buatAkun = async () => {
+    if (!akun.full_name.trim()) return toast.error("Nama wajib diisi");
+    if (!akun.email.includes("@")) return toast.error("Email tidak valid");
+    if (akun.password.length < 8) return toast.error("Kata sandi minimal 8 karakter");
+    setMembuat(true);
+    const { data: sesi } = await supabase.auth.getSession();
+    if (!sesi.session?.access_token) {
+      setMembuat(false);
+      return toast.error("Sesi berakhir, silakan masuk kembali");
+    }
+    const res = await fetch("/api/anggota", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${sesi.session.access_token}` },
+      body: JSON.stringify({
+        organizationId: orgId,
+        fullName: akun.full_name.trim(),
+        email: akun.email.trim().toLowerCase(),
+        password: akun.password,
+        role: akun.role,
+        outletId: akun.outlet_id || null,
+      }),
+    });
+    const hasil = await res.json();
+    setMembuat(false);
+    if (!res.ok) return toast.error(hasil.message ?? "Gagal membuat akun anggota");
+    toast.success(`Akun ${akun.email} dibuat sebagai ${akun.role}`);
+    setAkunOpen(false);
+    setAkun({ full_name: "", email: "", password: "", role: "kasir", outlet_id: "" });
     muat();
   };
 
@@ -222,8 +256,11 @@ export default function PenggunaPage() {
             <Button variant="outline" data-testid="refresh-users" onClick={muat}>
               <RefreshCw className="h-4 w-4" /> Muat ulang
             </Button>
-            <Button data-testid="invite-member" onClick={() => setOpen(true)}>
-              <MailPlus className="h-4 w-4" /> Undang Anggota
+            <Button variant="outline" data-testid="invite-member" onClick={() => setOpen(true)}>
+              <MailPlus className="h-4 w-4" /> Undang via Kode
+            </Button>
+            <Button data-testid="create-member" onClick={() => setAkunOpen(true)}>
+              <UserPlus className="h-4 w-4" /> Buat Akun Anggota
             </Button>
           </div>
         }
@@ -238,9 +275,10 @@ export default function PenggunaPage() {
       <Panel className="mb-5 flex items-start gap-3 border-brand/25 bg-brand-soft/40 p-5">
         <Info className="mt-0.5 h-4 w-4 shrink-0 text-brand" />
         <p className="text-[13px] leading-relaxed text-ink">
-          Cara menambah anggota: buat undangan berisi email + peran, lalu berikan kodenya. Calon anggota mendaftar di
-          halaman <span className="font-mono font-semibold">/daftar</span> dengan email yang sama dan memasukkan kode
-          tersebut. Tanpa kode, pendaftar akan membuat organisasi baru miliknya sendiri — bukan masuk ke organisasi Anda.
+          Dua cara menambah anggota: <span className="font-semibold">Buat Akun Anggota</span> (admin langsung menentukan
+          email &amp; kata sandi awal — akun siap dipakai saat itu juga), atau <span className="font-semibold">Undang via
+          Kode</span> (calon anggota mendaftar sendiri di <span className="font-mono">/daftar</span> memakai kode dan email
+          yang diundang). Keduanya hanya bisa dilakukan admin organisasi ini.
         </p>
       </Panel>
 
@@ -294,6 +332,72 @@ export default function PenggunaPage() {
         emptyText="Belum ada anggota"
         pageSize={12}
       />
+
+      <Modal
+        open={akunOpen}
+        onClose={() => setAkunOpen(false)}
+        title="Buat Akun Anggota"
+        subtitle="Akun langsung aktif — beritahukan kata sandi awal kepada anggota"
+        testId="create-member-modal"
+      >
+        <div className="space-y-4">
+          <Field label="Nama lengkap">
+            <Input
+              data-testid="member-name"
+              value={akun.full_name}
+              onChange={(e) => setAkun({ ...akun, full_name: e.target.value })}
+              placeholder="Nama anggota"
+            />
+          </Field>
+          <Field label="Email">
+            <Input
+              data-testid="member-email"
+              type="email"
+              value={akun.email}
+              onChange={(e) => setAkun({ ...akun, email: e.target.value })}
+              placeholder="nama@toko.com"
+            />
+          </Field>
+          <Field label="Kata sandi awal (min. 8 karakter)" hint="Minta anggota menggantinya setelah login pertama">
+            <Input
+              data-testid="member-password"
+              value={akun.password}
+              onChange={(e) => setAkun({ ...akun, password: e.target.value })}
+              placeholder="mis. Kasir2026!"
+              className="font-mono"
+            />
+          </Field>
+          <Field label="Peran">
+            <Select
+              testId="member-role"
+              value={akun.role}
+              onChange={(v) => setAkun({ ...akun, role: v })}
+              options={[
+                { value: "kasir", label: "Kasir — transaksi & kas" },
+                { value: "manager", label: "Manager — inventori & laporan" },
+                { value: "admin", label: "Admin — akses penuh" },
+              ]}
+            />
+          </Field>
+          <Field label="Outlet utama (opsional)">
+            <Select
+              testId="member-outlet"
+              value={akun.outlet_id || null}
+              onChange={(v) => setAkun({ ...akun, outlet_id: v })}
+              options={outlets.map((o) => ({ value: o.id, label: `${o.name} (${o.code})` }))}
+              placeholder="Pilih outlet"
+            />
+          </Field>
+          <div className="flex justify-end gap-2 border-t border-line pt-5">
+            <Button variant="outline" onClick={() => setAkunOpen(false)}>
+              Batal
+            </Button>
+            <Button data-testid="save-member" onClick={buatAkun} disabled={membuat}>
+              {membuat ? "Membuat..." : "Buat Akun"}
+            </Button>
+          </div>
+        </div>
+      </Modal>
 
       <Modal open={open} onClose={() => setOpen(false)} title="Undang Anggota" subtitle="Buat kode undangan untuk 1 email" testId="invite-modal">
         <div className="space-y-4">

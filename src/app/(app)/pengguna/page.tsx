@@ -416,11 +416,23 @@ export default function PenggunaPage() {
               <Input
                 data-testid="reset-password-input"
                 value={sandiBaru}
+                onFocus={(e) => e.currentTarget.select()}
                 onChange={(e) => setSandiBaru(e.target.value)}
                 className="font-mono"
               />
-              <Button variant="outline" data-testid="reset-generate" onClick={() => setSandiBaru(buatSandi())}>
+              <Button variant="outline" data-testid="reset-generate" title="Buat sandi acak" onClick={() => setSandiBaru(buatSandi())}>
                 <Shuffle className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="outline"
+                data-testid="reset-copy"
+                title="Copy sandi"
+                onClick={() => {
+                  navigator.clipboard.writeText(sandiBaru);
+                  toast.success("Kata sandi dicopy");
+                }}
+              >
+                <Copy className="h-4 w-4" />
               </Button>
             </div>
           </Field>

@@ -8,10 +8,13 @@ import { createClient } from "@/lib/supabase/client";
 import type { ProductStock, Transaction } from "@/lib/types";
 import { ratakanStok } from "@/lib/types";
 import { angka, delta, namaHari, rupiah, rupiahRingkas, tanggalPendek, unduhCsv } from "@/lib/utils";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 import {
   AlertTriangle,
   Clock,
   Download,
+  FileText,
   Lightbulb,
   Receipt,
   Sparkles,
@@ -47,7 +50,8 @@ const METODE_LABEL: Record<string, string> = { tunai: "Tunai", qris: "QRIS", kar
 
 export default function LaporanPage() {
   const supabase = useMemo(() => createClient(), []);
-  const { orgId, outletId, outlet, outlets } = useAuth();
+  const { orgId, outletId, outlet, outlets, memberships } = useAuth();
+  const orgName = memberships.find((m) => m.organization_id === orgId)?.organizations?.name ?? "KasirPro";
   const [lingkup, setLingkup] = useState<"outlet" | "org">("outlet");
   const [days, setDays] = useState<"7" | "14" | "30">("14");
   const [txs, setTxs] = useState<Transaction[]>([]);
@@ -220,6 +224,75 @@ export default function LaporanPage() {
       ...perOutlet.map((o) => [o.nama, o.kode, o.tx, o.omzet]),
     ]);
 
+  const eksporPdf = () => {
+    const doc = new jsPDF();
+    const lebar = doc.internal.pageSize.getWidth();
+    let y = 18;
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(16);
+    doc.text(orgName, 14, y);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(10);
+    doc.setTextColor(110);
+    y += 6;
+    doc.text(
+      `Laporan Penjualan · ${lingkup === "outlet" ? `Outlet ${outlet?.name ?? "-"}` : "Semua outlet"} · ${days} hari terakhir`,
+      14,
+      y,
+    );
+    doc.text(`Dicetak ${new Date().toLocaleString("id-ID")}`, lebar - 14, y, { align: "right" });
+    doc.setTextColor(20);
+    y += 8;
+
+    autoTable(doc, {
+      startY: y,
+      head: [["Ringkasan", "Nilai"]],
+      body: [
+        ["Omzet periode", rupiah(omzetPeriode)],
+        ["Total transaksi", String(txs.length)],
+        ["Rata-rata per transaksi", rupiah(rataRata)],
+        ["Total item terjual", String(totalItem)],
+        ["Produk stok menipis", String(stokMenipis.length)],
+      ],
+      theme: "plain",
+      styles: { fontSize: 10, cellPadding: 2 },
+      headStyles: { fontStyle: "bold", fillColor: [244, 244, 245] },
+      margin: { left: 14, right: 14 },
+    });
+
+    autoTable(doc, {
+      startY: (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 8,
+      head: [["Tanggal", "Transaksi", "Omzet"]],
+      body: [...harian.map((h) => [h.tanggal, String(h.transaksi), rupiah(h.omzet)]), ["TOTAL", String(txs.length), rupiah(omzetPeriode)]],
+      styles: { fontSize: 9 },
+      headStyles: { fillColor: [24, 24, 27] },
+      margin: { left: 14, right: 14 },
+    });
+
+    autoTable(doc, {
+      startY: (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 8,
+      head: [["Kasir", "Transaksi", "Item", "Omzet"]],
+      body: perKasir.map((k) => [k.nama, String(k.tx), String(k.item), rupiah(k.omzet)]),
+      styles: { fontSize: 9 },
+      headStyles: { fillColor: [24, 24, 27] },
+      margin: { left: 14, right: 14 },
+    });
+
+    if (perOutlet.length > 1) {
+      autoTable(doc, {
+        startY: (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 8,
+        head: [["Outlet", "Kode", "Transaksi", "Omzet"]],
+        body: perOutlet.map((o) => [o.nama, o.kode, String(o.tx), rupiah(o.omzet)]),
+        styles: { fontSize: 9 },
+        headStyles: { fillColor: [24, 24, 27] },
+        margin: { left: 14, right: 14 },
+      });
+    }
+
+    doc.save(`laporan-${days}hari.pdf`);
+  };
+
   const tooltipStyle = {
     borderRadius: 12,
     border: "1px solid var(--line)",
@@ -255,6 +328,9 @@ export default function LaporanPage() {
             />
             <Button variant="outline" data-testid="export-csv" onClick={ekspor}>
               <Download className="h-4 w-4" /> CSV
+            </Button>
+            <Button variant="outline" data-testid="export-pdf" onClick={eksporPdf}>
+              <FileText className="h-4 w-4" /> PDF
             </Button>
           </div>
         }

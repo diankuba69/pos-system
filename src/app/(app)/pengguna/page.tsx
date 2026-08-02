@@ -10,7 +10,7 @@ import { Modal } from "@/components/ui/modal";
 import { createClient } from "@/lib/supabase/client";
 import type { Membership } from "@/lib/types";
 import { angka, tanggal } from "@/lib/utils";
-import { Check, Copy, Info, KeyRound, RefreshCw, ShieldCheck, Shuffle, Smartphone, UserPlus, Users } from "lucide-react";
+import { Check, Copy, Info, KeyRound, Pencil, RefreshCw, ShieldCheck, Shuffle, Smartphone, Trash2, UserPlus, Users } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
@@ -37,6 +37,10 @@ export default function PenggunaPage() {
   const [reset, setReset] = useState<Membership | null>(null);
   const [sandiBaru, setSandiBaru] = useState("");
   const [mereset, setMereset] = useState(false);
+  const [edit, setEdit] = useState<Membership | null>(null);
+  const [editForm, setEditForm] = useState({ full_name: "", email: "", outlet_id: "" });
+  const [menyimpan, setMenyimpan] = useState(false);
+  const [menghapus, setMenghapus] = useState<string | null>(null);
 
   const muat = useCallback(async () => {
     if (!orgId) return;
@@ -157,6 +161,68 @@ export default function PenggunaPage() {
     toast.success("Kata sandi diperbarui");
   };
 
+  const simpanEdit = async () => {
+    if (!edit) return;
+    if (!editForm.full_name.trim()) return toast.error("Nama wajib diisi");
+    if (!editForm.email.includes("@")) return toast.error("Email tidak valid");
+    setMenyimpan(true);
+    const jwt = await token();
+    if (!jwt) {
+      setMenyimpan(false);
+      return toast.error("Sesi berakhir, silakan masuk kembali");
+    }
+    const namaBaru = editForm.full_name.trim();
+    const emailBaru = editForm.email.trim().toLowerCase();
+    const berubahProfil = namaBaru !== (edit.profiles?.full_name ?? "") || emailBaru !== (edit.profiles?.email ?? "");
+    if (berubahProfil) {
+      const res = await fetch("/aksi/anggota", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${jwt}` },
+        body: JSON.stringify({ organizationId: orgId, userId: edit.user_id, fullName: namaBaru, email: emailBaru }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setMenyimpan(false);
+        return toast.error(data.message ?? "Gagal menyimpan perubahan anggota");
+      }
+    }
+    const { error } = await supabase
+      .from("organization_memberships")
+      .update({ default_outlet_id: editForm.outlet_id || null })
+      .eq("id", edit.id);
+    setMenyimpan(false);
+    if (error) return toast.error(error.message);
+    toast.success("Data anggota diperbarui");
+    setEdit(null);
+    muat();
+  };
+
+  const hapusAnggota = async (m: Membership) => {
+    const ok = await confirm({
+      title: `Hapus akun ${m.profiles?.full_name ?? m.profiles?.email}?`,
+      description: "Akun ini akan dihapus permanen dan tidak bisa login lagi. Riwayat transaksi yang sudah tercatat tetap tersimpan.",
+      confirmText: "Hapus Permanen",
+      tone: "danger",
+    });
+    if (!ok) return;
+    setMenghapus(m.user_id);
+    const jwt = await token();
+    if (!jwt) {
+      setMenghapus(null);
+      return toast.error("Sesi berakhir, silakan masuk kembali");
+    }
+    const res = await fetch("/aksi/anggota", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${jwt}` },
+      body: JSON.stringify({ organizationId: orgId, userId: m.user_id }),
+    });
+    const data = await res.json().catch(() => ({}));
+    setMenghapus(null);
+    if (!res.ok) return toast.error(data.message ?? "Gagal menghapus anggota");
+    toast.success("Anggota dihapus");
+    muat();
+  };
+
   const jumlah = (r: string) => rows.filter((u) => u.role === r && u.is_active).length;
   const aktif = rows.filter((r) => r.is_active).length;
 
@@ -258,6 +324,42 @@ export default function PenggunaPage() {
           >
             <KeyRound className="h-3 w-3" /> Reset
           </Button>
+        ),
+    },
+    {
+      key: "aksi",
+      header: "Aksi",
+      width: "110px",
+      cell: (m) =>
+        m.user_id === session?.user?.id ? (
+          <span className="text-dim">-</span>
+        ) : (
+          <div className="flex items-center gap-1.5">
+            <button
+              data-testid={`edit-member-${m.user_id}`}
+              title="Edit anggota"
+              onClick={() => {
+                setEdit(m);
+                setEditForm({
+                  full_name: m.profiles?.full_name ?? "",
+                  email: m.profiles?.email ?? "",
+                  outlet_id: m.default_outlet_id ?? "",
+                });
+              }}
+              className="rounded-lg p-1.5 text-dim transition-colors duration-150 hover:bg-muted hover:text-ink"
+            >
+              <Pencil className="h-3.5 w-3.5" />
+            </button>
+            <button
+              data-testid={`delete-member-${m.user_id}`}
+              title="Hapus anggota"
+              disabled={menghapus === m.user_id}
+              onClick={() => hapusAnggota(m)}
+              className="rounded-lg p-1.5 text-dim transition-colors duration-150 hover:bg-bad-soft hover:text-bad disabled:opacity-50"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+            </button>
+          </div>
         ),
     },
   ];
@@ -442,6 +544,51 @@ export default function PenggunaPage() {
             </Button>
             <Button data-testid="save-reset-password" onClick={simpanSandi} disabled={mereset}>
               {mereset ? "Menyimpan..." : "Simpan Sandi"}
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal
+        open={!!edit}
+        onClose={() => setEdit(null)}
+        title="Edit Anggota"
+        subtitle={edit?.profiles?.email ?? ""}
+        testId="edit-member-modal"
+      >
+        <div className="space-y-4">
+          <Field label="Nama lengkap">
+            <Input
+              data-testid="edit-member-name"
+              value={editForm.full_name}
+              onChange={(e) => setEditForm({ ...editForm, full_name: e.target.value })}
+              placeholder="Nama anggota"
+            />
+          </Field>
+          <Field label="Email">
+            <Input
+              data-testid="edit-member-email"
+              type="email"
+              value={editForm.email}
+              onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
+              placeholder="nama@toko.com"
+            />
+          </Field>
+          <Field label="Outlet utama (opsional)">
+            <Select
+              testId="edit-member-outlet"
+              value={editForm.outlet_id || null}
+              onChange={(v) => setEditForm({ ...editForm, outlet_id: v })}
+              options={outlets.map((o) => ({ value: o.id, label: `${o.name} (${o.code})` }))}
+              placeholder="Pilih outlet"
+            />
+          </Field>
+          <div className="flex justify-end gap-2 border-t border-line pt-5">
+            <Button variant="outline" onClick={() => setEdit(null)}>
+              Batal
+            </Button>
+            <Button data-testid="save-edit-member" onClick={simpanEdit} disabled={menyimpan}>
+              {menyimpan ? "Menyimpan..." : "Simpan Perubahan"}
             </Button>
           </div>
         </div>

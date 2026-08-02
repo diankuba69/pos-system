@@ -3,6 +3,7 @@
 import { useAuth } from "@/components/AuthProvider";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { Kbd } from "@/components/ui/button";
+import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 import {
   BarChart3,
@@ -27,7 +28,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 export const NAV = [
   { href: "/kasir", label: "Kasir", icon: ShoppingCart, level: "all", group: "Operasional" },
@@ -140,12 +141,19 @@ function TenantSwitcher() {
 }
 
 export function AppShell({ children }: { children: React.ReactNode }) {
-  const { profile, role, isAdmin, isManager, signOut, memberships, orgId } = useAuth();
+  const { profile, role, isAdmin, isManager, signOut, memberships, orgId, outletId } = useAuth();
+  const supabase = useMemo(() => createClient(), []);
   const pathname = usePathname();
   const router = useRouter();
   const [collapsed, setCollapsed] = useState(() => typeof window !== "undefined" && localStorage.getItem("kasirpro-sidebar") === "1");
   const [palette, setPalette] = useState(false);
   const [q, setQ] = useState("");
+  const [lowStock, setLowStock] = useState(0);
+
+  useEffect(() => {
+    if (!outletId || !(isAdmin || isManager)) return;
+    supabase.rpc("count_low_stock", { p_outlet_id: outletId }).then(({ data }) => setLowStock(data ?? 0));
+  }, [supabase, outletId, isAdmin, isManager]);
 
   const items = NAV.filter(
     (n) =>
@@ -211,6 +219,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 .map((item) => {
                   const on = pathname.startsWith(item.href);
                   const Icon = item.icon;
+                  const showAlert = item.href === "/produk" && lowStock > 0;
                   return (
                     <Link
                       key={item.href}
@@ -223,13 +232,33 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                         collapsed && "justify-center px-0",
                       )}
                     >
-                      <Icon className="h-[18px] w-[18px] shrink-0" />
+                      <span className="relative shrink-0">
+                        <Icon className="h-[18px] w-[18px]" />
+                        {showAlert && collapsed && (
+                          <span
+                            data-testid="low-stock-dot"
+                            className="absolute -right-1 -top-1 h-2 w-2 rounded-full bg-bad ring-2 ring-surface"
+                          />
+                        )}
+                      </span>
                       {!collapsed && <span className="truncate">{item.label}</span>}
-                      {on && !collapsed && <span className="ml-auto h-1.5 w-1.5 rounded-full bg-accent" />}
+                      {showAlert && !collapsed && (
+                        <span
+                          data-testid="low-stock-badge"
+                          className={cn(
+                            "ml-auto flex h-5 min-w-5 items-center justify-center rounded-full px-1 font-mono text-[10px] font-bold tabular-nums",
+                            on ? "bg-bg text-bad" : "bg-bad text-white",
+                          )}
+                        >
+                          {lowStock}
+                        </span>
+                      )}
+                      {on && !collapsed && !showAlert && <span className="ml-auto h-1.5 w-1.5 rounded-full bg-accent" />}
                     </Link>
                   );
                 })}
             </div>
+
           ))}
         </nav>
 
@@ -303,6 +332,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           {items.slice(0, 5).map((item) => {
             const on = pathname.startsWith(item.href);
             const Icon = item.icon;
+            const showAlert = item.href === "/produk" && lowStock > 0;
             return (
               <Link
                 key={item.href}
@@ -313,7 +343,15 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   on ? "text-ink" : "text-dim",
                 )}
               >
-                <Icon className="h-[18px] w-[18px]" />
+                <span className="relative">
+                  <Icon className="h-[18px] w-[18px]" />
+                  {showAlert && (
+                    <span
+                      data-testid="low-stock-dot-mobile"
+                      className="absolute -right-1 -top-1 h-2 w-2 rounded-full bg-bad ring-2 ring-surface"
+                    />
+                  )}
+                </span>
                 {item.label.split(" ")[0]}
               </Link>
             );

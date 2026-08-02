@@ -134,18 +134,6 @@ export default function MasukPage() {
             </Button>
           </form>
 
-          <button
-            data-testid="fill-demo"
-            onClick={() => {
-              setEmail("admin@kasirpro.id");
-              setPassword("Demo1234!");
-              toast.success("Akun demo diisi. Klik Masuk.");
-            }}
-            className="mt-4 w-full rounded-xl border border-dashed border-line px-4 py-2.5 text-xs font-semibold text-dim transition-colors duration-150 hover:border-ink/40 hover:text-ink"
-          >
-            Coba dengan akun demo admin
-          </button>
-
           <p className="mt-6 text-sm text-dim" data-testid="onboarding-hint">
             Belum punya akun? Akun dibuat oleh admin toko Anda —{" "}
             <Link data-testid="to-register" href="/daftar" className="font-bold text-brand underline-offset-4 hover:underline">

@@ -24,7 +24,7 @@ export default function DaftarPage() {
     const { data, error } = await supabase.auth.signUp({
       email: form.email.trim().toLowerCase(),
       password: form.password,
-      options: { data: { full_name: form.full_name, role: "kasir" } },
+      options: { data: { full_name: form.full_name } },
     });
     setLoading(false);
     if (error) {
@@ -32,6 +32,7 @@ export default function DaftarPage() {
       return;
     }
     if (data.session) {
+      await supabase.auth.getSession();
       toast.success("Akun dibuat, selamat datang!");
       router.replace("/kasir");
     } else {

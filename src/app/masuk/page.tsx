@@ -27,6 +27,8 @@ export default function MasukPage() {
       setError(error.message === "Invalid login credentials" ? "Email atau kata sandi salah." : error.message);
       return;
     }
+    // pastikan sesi sudah tersimpan sebelum navigasi (hindari terpental ke /masuk)
+    await supabase.auth.getSession();
     toast.success("Berhasil masuk");
     router.replace("/kasir");
   };

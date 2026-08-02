@@ -125,6 +125,7 @@ export default function KasirPage() {
         : undefined);
     if (!found) {
       toast.error(`Barcode/SKU "${kode}" tidak ditemukan`);
+      setCari("");
       return;
     }
     tambah(found);
@@ -170,6 +171,11 @@ export default function KasirPage() {
     if (error) {
       setProses(false);
       toast.error(error.message);
+      if (error.message.includes("Kas belum dibuka")) {
+        setBayarOpen(false);
+        setShift(null);
+        muat();
+      }
       return;
     }
     const { data: tx } = await supabase

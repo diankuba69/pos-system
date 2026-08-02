@@ -15,9 +15,12 @@ export function BarcodeScanner({
 }) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [error, setError] = useState("");
+  const cbRef = useRef({ onClose, onDetected });
+  cbRef.current = { onClose, onDetected };
 
   useEffect(() => {
     if (!open) return;
+    setError("");
     const reader = new BrowserMultiFormatReader();
     let controls: { stop: () => void } | null = null;
     let stopped = false;
@@ -27,9 +30,9 @@ export function BarcodeScanner({
         controls = await reader.decodeFromVideoDevice(undefined, videoRef.current ?? undefined, (result) => {
           if (result && !stopped) {
             stopped = true;
-            onDetected(result.getText());
+            cbRef.current.onDetected(result.getText());
             controls?.stop();
-            onClose();
+            cbRef.current.onClose();
           }
         });
       } catch (e) {
@@ -45,7 +48,7 @@ export function BarcodeScanner({
       stopped = true;
       controls?.stop();
     };
-  }, [open, onClose, onDetected]);
+  }, [open]);
 
   return (
     <Modal open={open} onClose={onClose} title="Pindai Barcode" testId="scanner-modal">

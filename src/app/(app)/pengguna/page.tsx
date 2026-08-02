@@ -5,46 +5,48 @@ import { Button } from "@/components/ui/button";
 import { useConfirm } from "@/components/ui/confirm";
 import { DataTable, type Column } from "@/components/ui/data-table";
 import { Field, Input, Select } from "@/components/ui/field";
-import { Badge, Empty, PageHeader, Panel, SectionTitle, StatCard } from "@/components/ui/misc";
+import { Badge, PageHeader, Panel, StatCard } from "@/components/ui/misc";
 import { Modal } from "@/components/ui/modal";
 import { createClient } from "@/lib/supabase/client";
-import type { Invitation, Membership } from "@/lib/types";
+import type { Membership } from "@/lib/types";
 import { angka, tanggal } from "@/lib/utils";
-import { Check, Copy, Info, MailPlus, RefreshCw, ShieldCheck, Smartphone, Trash2, UserPlus, Users } from "lucide-react";
+import { Check, Copy, Info, KeyRound, RefreshCw, ShieldCheck, Shuffle, Smartphone, UserPlus, Users } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
+
+const HURUF = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789";
+
+function buatSandi() {
+  const bytes = new Uint32Array(10);
+  crypto.getRandomValues(bytes);
+  return Array.from(bytes, (b) => HURUF[b % HURUF.length]).join("") + "!7";
+}
+
+const kosong = { full_name: "", email: "", password: "", role: "kasir", outlet_id: "" };
 
 export default function PenggunaPage() {
   const supabase = useMemo(() => createClient(), []);
   const confirm = useConfirm();
   const { orgId, outlets, session } = useAuth();
   const [rows, setRows] = useState<Membership[]>([]);
-  const [invites, setInvites] = useState<Invitation[]>([]);
   const [loading, setLoading] = useState(true);
-  const [open, setOpen] = useState(false);
-  const [form, setForm] = useState({ email: "", role: "kasir", outlet_id: "" });
-  const [kodeBaru, setKodeBaru] = useState<Invitation | null>(null);
   const [akunOpen, setAkunOpen] = useState(false);
-  const [akun, setAkun] = useState({ full_name: "", email: "", password: "", role: "kasir", outlet_id: "" });
+  const [akun, setAkun] = useState(kosong);
   const [membuat, setMembuat] = useState(false);
+  const [hasil, setHasil] = useState<{ email: string; password: string; role: string } | null>(null);
+  const [reset, setReset] = useState<Membership | null>(null);
+  const [sandiBaru, setSandiBaru] = useState("");
+  const [mereset, setMereset] = useState(false);
 
   const muat = useCallback(async () => {
     if (!orgId) return;
-    const [m, i] = await Promise.all([
-      supabase
-        .from("organization_memberships")
-        .select("*, profiles(*), outlets(name)")
-        .eq("organization_id", orgId)
-        .order("created_at"),
-      supabase
-        .from("invitations")
-        .select("*, outlets(name)")
-        .eq("organization_id", orgId)
-        .order("created_at", { ascending: false }),
-    ]);
-    if (m.error) toast.error(m.error.message);
-    setRows((m.data as Membership[]) ?? []);
-    setInvites((i.data as Invitation[]) ?? []);
+    const { data, error } = await supabase
+      .from("organization_memberships")
+      .select("*, profiles(*), outlets(name)")
+      .eq("organization_id", orgId)
+      .order("created_at");
+    if (error) toast.error(error.message);
+    setRows((data as Membership[]) ?? []);
     setLoading(false);
   }, [supabase, orgId]);
 
@@ -52,12 +54,13 @@ export default function PenggunaPage() {
     muat();
   }, [muat]);
 
+  const token = async () => {
+    const { data } = await supabase.auth.getSession();
+    return data.session?.access_token ?? null;
+  };
+
   const ubahRole = async (m: Membership, role: string) => {
-    const { data, error } = await supabase
-      .from("organization_memberships")
-      .update({ role })
-      .eq("id", m.id)
-      .select();
+    const { data, error } = await supabase.from("organization_memberships").update({ role }).eq("id", m.id).select();
     if (error) return toast.error(error.message);
     if (!data || data.length === 0) return toast.error("Gagal: hanya admin organisasi yang boleh mengubah peran.");
     toast.success("Peran diperbarui");
@@ -99,35 +102,19 @@ export default function PenggunaPage() {
     muat();
   };
 
-  const undang = async () => {
-    if (!form.email.trim()) return toast.error("Email wajib diisi");
-    const { data, error } = await supabase.rpc("create_invitation", {
-      p_org: orgId,
-      p_email: form.email.trim().toLowerCase(),
-      p_role: form.role,
-      p_outlet_id: form.outlet_id || null,
-    });
-    if (error) return toast.error(error.message);
-    setKodeBaru(data as Invitation);
-    setOpen(false);
-    setForm({ email: "", role: "kasir", outlet_id: "" });
-    toast.success("Undangan dibuat");
-    muat();
-  };
-
   const buatAkun = async () => {
     if (!akun.full_name.trim()) return toast.error("Nama wajib diisi");
     if (!akun.email.includes("@")) return toast.error("Email tidak valid");
     if (akun.password.length < 8) return toast.error("Kata sandi minimal 8 karakter");
     setMembuat(true);
-    const { data: sesi } = await supabase.auth.getSession();
-    if (!sesi.session?.access_token) {
+    const jwt = await token();
+    if (!jwt) {
       setMembuat(false);
       return toast.error("Sesi berakhir, silakan masuk kembali");
     }
-    const res = await fetch("/api/anggota", {
+    const res = await fetch("/aksi/anggota", {
       method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${sesi.session.access_token}` },
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${jwt}` },
       body: JSON.stringify({
         organizationId: orgId,
         fullName: akun.full_name.trim(),
@@ -137,31 +124,41 @@ export default function PenggunaPage() {
         outletId: akun.outlet_id || null,
       }),
     });
-    const hasil = await res.json();
+    const data = await res.json().catch(() => ({}));
     setMembuat(false);
-    if (!res.ok) return toast.error(hasil.message ?? "Gagal membuat akun anggota");
-    toast.success(`Akun ${akun.email} dibuat sebagai ${akun.role}`);
+    if (!res.ok) return toast.error(data.message ?? "Gagal membuat akun anggota");
+    setHasil({ email: akun.email.trim().toLowerCase(), password: akun.password, role: akun.role });
     setAkunOpen(false);
-    setAkun({ full_name: "", email: "", password: "", role: "kasir", outlet_id: "" });
+    setAkun(kosong);
+    toast.success("Akun anggota dibuat");
     muat();
   };
 
-  const batalkanUndangan = async (inv: Invitation) => {
-    const ok = await confirm({
-      title: `Batalkan undangan ${inv.email}?`,
-      description: "Kode undangan tidak bisa dipakai lagi untuk mendaftar.",
-      confirmText: "Batalkan undangan",
-      tone: "danger",
+  const simpanSandi = async () => {
+    if (!reset) return;
+    if (sandiBaru.length < 8) return toast.error("Kata sandi minimal 8 karakter");
+    setMereset(true);
+    const jwt = await token();
+    if (!jwt) {
+      setMereset(false);
+      return toast.error("Sesi berakhir, silakan masuk kembali");
+    }
+    const res = await fetch("/aksi/anggota", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${jwt}` },
+      body: JSON.stringify({ organizationId: orgId, userId: reset.user_id, password: sandiBaru }),
     });
-    if (!ok) return;
-    const { error } = await supabase.from("invitations").delete().eq("id", inv.id);
-    if (error) return toast.error(error.message);
-    toast.success("Undangan dibatalkan");
-    muat();
+    const data = await res.json().catch(() => ({}));
+    setMereset(false);
+    if (!res.ok) return toast.error(data.message ?? "Gagal mengubah kata sandi");
+    setHasil({ email: reset.profiles?.email ?? "-", password: sandiBaru, role: reset.role });
+    setReset(null);
+    setSandiBaru("");
+    toast.success("Kata sandi diperbarui");
   };
 
   const jumlah = (r: string) => rows.filter((u) => u.role === r && u.is_active).length;
-  const menunggu = invites.filter((i) => i.status === "menunggu");
+  const aktif = rows.filter((r) => r.is_active).length;
 
   const columns: Column<Membership>[] = [
     {
@@ -243,6 +240,26 @@ export default function PenggunaPage() {
           <Badge tone="zinc">bebas</Badge>
         ),
     },
+    {
+      key: "sandi",
+      header: "Kata sandi",
+      cell: (m) =>
+        m.user_id === session?.user?.id ? (
+          <span className="text-dim">-</span>
+        ) : (
+          <Button
+            size="sm"
+            variant="outline"
+            data-testid={`reset-password-${m.user_id}`}
+            onClick={() => {
+              setReset(m);
+              setSandiBaru(buatSandi());
+            }}
+          >
+            <KeyRound className="h-3 w-3" /> Reset
+          </Button>
+        ),
+    },
   ];
 
   return (
@@ -250,16 +267,19 @@ export default function PenggunaPage() {
       <PageHeader
         eyebrow="Administrasi"
         title="Anggota Organisasi"
-        subtitle="Peran berlaku per organisasi. Hanya admin yang dapat memberi akses anggota baru lewat kode undangan."
+        subtitle="Hanya admin yang dapat membuat akun anggota dan menentukan kata sandi awalnya."
         action={
           <div className="flex gap-2">
             <Button variant="outline" data-testid="refresh-users" onClick={muat}>
               <RefreshCw className="h-4 w-4" /> Muat ulang
             </Button>
-            <Button variant="outline" data-testid="invite-member" onClick={() => setOpen(true)}>
-              <MailPlus className="h-4 w-4" /> Undang via Kode
-            </Button>
-            <Button data-testid="create-member" onClick={() => setAkunOpen(true)}>
+            <Button
+              data-testid="create-member"
+              onClick={() => {
+                setAkun({ ...kosong, password: buatSandi() });
+                setAkunOpen(true);
+              }}
+            >
               <UserPlus className="h-4 w-4" /> Buat Akun Anggota
             </Button>
           </div>
@@ -267,57 +287,20 @@ export default function PenggunaPage() {
       />
 
       <div className="mb-5 grid gap-4 sm:grid-cols-3">
-        <StatCard label="Anggota aktif" value={angka(rows.filter((r) => r.is_active).length)} numeric={rows.filter((r) => r.is_active).length} format={angka} icon={<Users className="h-4 w-4" />} />
+        <StatCard label="Anggota aktif" value={angka(aktif)} numeric={aktif} format={angka} icon={<Users className="h-4 w-4" />} />
         <StatCard label="Admin & Manager" value={angka(jumlah("admin") + jumlah("manager"))} numeric={jumlah("admin") + jumlah("manager")} format={angka} icon={<ShieldCheck className="h-4 w-4" />} />
-        <StatCard label="Undangan menunggu" value={angka(menunggu.length)} numeric={menunggu.length} format={angka} hint="Kode belum dipakai" icon={<MailPlus className="h-4 w-4" />} />
+        <StatCard label="Kasir aktif" value={angka(jumlah("kasir"))} numeric={jumlah("kasir")} format={angka} hint="Dibatasi 1 device" icon={<Smartphone className="h-4 w-4" />} />
       </div>
 
       <Panel className="mb-5 flex items-start gap-3 border-brand/25 bg-brand-soft/40 p-5">
         <Info className="mt-0.5 h-4 w-4 shrink-0 text-brand" />
-        <p className="text-[13px] leading-relaxed text-ink">
-          Dua cara menambah anggota: <span className="font-semibold">Buat Akun Anggota</span> (admin langsung menentukan
-          email &amp; kata sandi awal — akun siap dipakai saat itu juga), atau <span className="font-semibold">Undang via
-          Kode</span> (calon anggota mendaftar sendiri di <span className="font-mono">/daftar</span> memakai kode dan email
-          yang diundang). Keduanya hanya bisa dilakukan admin organisasi ini.
+        <p className="text-[13px] leading-relaxed text-ink" data-testid="onboarding-note">
+          Anggota tidak bisa mendaftar sendiri. Klik <span className="font-semibold">Buat Akun Anggota</span>, tentukan
+          email dan kata sandi awal, lalu beritahukan kredensialnya kepada yang bersangkutan. Akun langsung aktif dan bisa
+          dipakai saat itu juga. Bila anggota lupa sandi, gunakan tombol <span className="font-semibold">Reset</span> di
+          kolom kata sandi.
         </p>
       </Panel>
-
-      {menunggu.length > 0 && (
-        <Panel className="mb-5 p-5" data-testid="pending-invites">
-          <SectionTitle>Undangan menunggu</SectionTitle>
-          <div className="space-y-2">
-            {menunggu.map((inv) => (
-              <div key={inv.id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-line px-4 py-3">
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-bold text-ink">{inv.email}</p>
-                  <p className="text-[11px] text-dim">
-                    {inv.role} · {inv.outlets?.name ?? "semua outlet"} · dibuat {tanggal(inv.created_at)}
-                  </p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <code className="rounded-lg border border-line bg-muted px-2.5 py-1 font-mono text-sm font-bold tracking-widest text-ink">
-                    {inv.code}
-                  </code>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    data-testid={`copy-code-${inv.id}`}
-                    onClick={() => {
-                      navigator.clipboard.writeText(inv.code);
-                      toast.success("Kode undangan dicopy");
-                    }}
-                  >
-                    <Copy className="h-3 w-3" />
-                  </Button>
-                  <Button size="sm" variant="danger" data-testid={`cancel-invite-${inv.id}`} onClick={() => batalkanUndangan(inv)}>
-                    <Trash2 className="h-3 w-3" />
-                  </Button>
-                </div>
-              </div>
-            ))}
-          </div>
-        </Panel>
-      )}
 
       <DataTable
         testId="pengguna-table"
@@ -359,13 +342,34 @@ export default function PenggunaPage() {
             />
           </Field>
           <Field label="Kata sandi awal (min. 8 karakter)" hint="Minta anggota menggantinya setelah login pertama">
-            <Input
-              data-testid="member-password"
-              value={akun.password}
-              onChange={(e) => setAkun({ ...akun, password: e.target.value })}
-              placeholder="mis. Kasir2026!"
-              className="font-mono"
-            />
+            <div className="flex gap-2">
+              <Input
+                data-testid="member-password"
+                value={akun.password}
+                onChange={(e) => setAkun({ ...akun, password: e.target.value })}
+                placeholder="mis. Kasir2026!"
+                className="font-mono"
+              />
+              <Button
+                variant="outline"
+                data-testid="generate-password"
+                title="Buat sandi acak"
+                onClick={() => setAkun({ ...akun, password: buatSandi() })}
+              >
+                <Shuffle className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="outline"
+                data-testid="copy-password"
+                title="Copy sandi"
+                onClick={() => {
+                  navigator.clipboard.writeText(akun.password);
+                  toast.success("Kata sandi dicopy");
+                }}
+              >
+                <Copy className="h-4 w-4" />
+              </Button>
+            </div>
           </Field>
           <Field label="Peran">
             <Select
@@ -399,79 +403,68 @@ export default function PenggunaPage() {
         </div>
       </Modal>
 
-      <Modal open={open} onClose={() => setOpen(false)} title="Undang Anggota" subtitle="Buat kode undangan untuk 1 email" testId="invite-modal">
+      <Modal
+        open={!!reset}
+        onClose={() => setReset(null)}
+        title="Reset Kata Sandi"
+        subtitle={reset?.profiles?.email ?? ""}
+        testId="reset-password-modal"
+      >
         <div className="space-y-4">
-          <Field label="Email calon anggota" hint="Kode hanya bisa dipakai oleh email ini">
-            <Input
-              data-testid="invite-email"
-              type="email"
-              value={form.email}
-              onChange={(e) => setForm({ ...form, email: e.target.value })}
-              placeholder="nama@email.com"
-            />
-          </Field>
-          <Field label="Peran">
-            <Select
-              testId="invite-role"
-              value={form.role}
-              onChange={(v) => setForm({ ...form, role: v })}
-              options={[
-                { value: "kasir", label: "Kasir — transaksi & kas" },
-                { value: "manager", label: "Manager — inventori & laporan" },
-                { value: "admin", label: "Admin — akses penuh" },
-              ]}
-            />
-          </Field>
-          <Field label="Outlet utama (opsional)">
-            <Select
-              testId="invite-outlet"
-              value={form.outlet_id || null}
-              onChange={(v) => setForm({ ...form, outlet_id: v })}
-              options={outlets.map((o) => ({ value: o.id, label: `${o.name} (${o.code})` }))}
-              placeholder="Pilih outlet"
-            />
+          <Field label="Kata sandi baru (min. 8 karakter)">
+            <div className="flex gap-2">
+              <Input
+                data-testid="reset-password-input"
+                value={sandiBaru}
+                onChange={(e) => setSandiBaru(e.target.value)}
+                className="font-mono"
+              />
+              <Button variant="outline" data-testid="reset-generate" onClick={() => setSandiBaru(buatSandi())}>
+                <Shuffle className="h-4 w-4" />
+              </Button>
+            </div>
           </Field>
           <div className="flex justify-end gap-2 border-t border-line pt-5">
-            <Button variant="outline" onClick={() => setOpen(false)}>
+            <Button variant="outline" onClick={() => setReset(null)}>
               Batal
             </Button>
-            <Button data-testid="save-invite" onClick={undang}>
-              Buat Undangan
+            <Button data-testid="save-reset-password" onClick={simpanSandi} disabled={mereset}>
+              {mereset ? "Menyimpan..." : "Simpan Sandi"}
             </Button>
           </div>
         </div>
       </Modal>
 
-      <Modal open={!!kodeBaru} onClose={() => setKodeBaru(null)} title="Kode Undangan Dibuat" testId="invite-code-modal">
-        {kodeBaru ? (
+      <Modal open={!!hasil} onClose={() => setHasil(null)} title="Kredensial Anggota" testId="member-credentials-modal">
+        {hasil && (
           <div className="text-center">
             <span className="mx-auto flex h-11 w-11 items-center justify-center rounded-2xl bg-ok-soft text-ok">
               <Check className="h-5 w-5" />
             </span>
-            <p className="mt-4 text-sm text-dim">Berikan kode ini kepada</p>
-            <p className="font-display text-lg font-extrabold text-ink">{kodeBaru.email}</p>
-            <code
-              data-testid="new-invite-code"
-              className="mt-4 inline-block rounded-xl border border-line bg-muted px-6 py-3 font-mono text-2xl font-bold tracking-[0.3em] text-ink"
-            >
-              {kodeBaru.code}
-            </code>
+            <p className="mt-4 text-sm text-dim">Berikan kredensial ini kepada anggota ({hasil.role})</p>
+            <div className="mt-4 space-y-2 rounded-xl border border-line bg-muted p-4 text-left">
+              <p className="font-mono text-sm font-bold text-ink" data-testid="credential-email">
+                {hasil.email}
+              </p>
+              <p className="font-mono text-sm font-bold text-ink" data-testid="credential-password">
+                {hasil.password}
+              </p>
+            </div>
             <p className="mt-4 text-[13px] leading-relaxed text-dim">
-              Minta yang bersangkutan mendaftar di <span className="font-mono">/daftar</span>, memilih “Punya kode
-              undangan”, lalu memasukkan email di atas beserta kode ini.
+              Kata sandi ini tidak bisa dilihat lagi setelah jendela ini ditutup. Minta anggota menggantinya setelah
+              login pertama di <span className="font-mono">/masuk</span>.
             </p>
             <Button
               className="mt-5 w-full"
+              data-testid="copy-credentials"
               onClick={() => {
-                navigator.clipboard.writeText(kodeBaru.code);
-                toast.success("Kode dicopy");
+                navigator.clipboard.writeText(`Email: ${hasil.email}\nSandi: ${hasil.password}`);
+                toast.success("Kredensial dicopy");
               }}
             >
-              <Copy className="h-4 w-4" /> Copy kode
+              <Copy className="h-4 w-4" /> Copy kredensial
             </Button>
           </div>
-        ) : (
-          <Empty text="Tidak ada kode" />
         )}
       </Modal>
     </div>

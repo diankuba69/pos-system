@@ -12,6 +12,8 @@ const PESAN: Record<string, string> = {
   invalid_email: "Email tidak valid.",
   invalid_password: "Kata sandi minimal 8 karakter.",
   invalid_role: "Peran tidak valid.",
+  invalid_member: "Anggota tidak ditemukan di organisasi ini.",
+  password_update_failed: "Gagal mengubah kata sandi anggota.",
   invalid_outlet: "Outlet bukan milik organisasi ini.",
   member_already_exists: "Email ini sudah dipakai akun lain.",
   member_creation_failed: "Gagal membuat akun di server autentikasi.",
@@ -25,6 +27,62 @@ function json(kode: string | null, status: number, extra?: Record<string, unknow
     kode ? { error: kode, message: PESAN[kode] ?? "Terjadi kesalahan", ...extra } : { ...extra },
     { status, headers: { "Cache-Control": "no-store" } },
   );
+}
+
+/** Pastikan pemanggil adalah admin aktif dari organisasi tersebut. */
+async function pastikanAdmin(organizationId: string, userId: string) {
+  const { data, error } = await supabaseAdmin
+    .from("organization_memberships")
+    .select("role, is_active")
+    .eq("organization_id", organizationId)
+    .eq("user_id", userId)
+    .maybeSingle();
+  if (error) return "authorization_check_failed";
+  if (!data || data.role !== "admin" || !data.is_active) return "forbidden";
+  return null;
+}
+
+export async function PATCH(request: Request) {
+  let verified: Awaited<ReturnType<typeof getVerifiedCaller>>;
+  try {
+    verified = await getVerifiedCaller(request);
+  } catch (e) {
+    console.error("Konfigurasi autentikasi gagal", e);
+    return json("server_configuration_error", 500);
+  }
+  if (!verified.user) return json("unauthorized", 401);
+
+  let body: Record<string, unknown>;
+  try {
+    body = (await request.json()) as Record<string, unknown>;
+  } catch {
+    return json("invalid_json", 400);
+  }
+
+  const organizationId = typeof body.organizationId === "string" ? body.organizationId : "";
+  const targetUserId = typeof body.userId === "string" ? body.userId : "";
+  const password = typeof body.password === "string" ? body.password : "";
+  if (!organizationId || !targetUserId) return json("invalid_json", 400);
+  if (password.length < 8 || password.length > 256) return json("invalid_password", 400);
+
+  const gagalIzin = await pastikanAdmin(organizationId, verified.user.id);
+  if (gagalIzin) return json(gagalIzin, gagalIzin === "forbidden" ? 403 : 500);
+
+  const { data: target } = await supabaseAdmin
+    .from("organization_memberships")
+    .select("id")
+    .eq("organization_id", organizationId)
+    .eq("user_id", targetUserId)
+    .maybeSingle();
+  if (!target) return json("invalid_member", 404);
+
+  const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(targetUserId, { password });
+  if (updateError) {
+    console.error("Gagal update sandi", { targetUserId, message: updateError.message });
+    return json("password_update_failed", 502);
+  }
+
+  return json(null, 200, { ok: true });
 }
 
 export async function POST(request: Request) {
@@ -57,18 +115,8 @@ export async function POST(request: Request) {
   if (!["admin", "manager", "kasir"].includes(role)) return json("invalid_role", 400);
 
   // Otorisasi dari database, bukan dari input klien.
-  const { data: membership, error: membershipError } = await supabaseAdmin
-    .from("organization_memberships")
-    .select("role, is_active")
-    .eq("organization_id", organizationId)
-    .eq("user_id", verified.user.id)
-    .maybeSingle();
-
-  if (membershipError) {
-    console.error("Gagal cek keanggotaan", membershipError);
-    return json("authorization_check_failed", 500);
-  }
-  if (!membership || membership.role !== "admin" || !membership.is_active) return json("forbidden", 403);
+  const gagalIzin = await pastikanAdmin(organizationId, verified.user.id);
+  if (gagalIzin) return json(gagalIzin, gagalIzin === "forbidden" ? 403 : 500);
 
   if (outletId) {
     const { data: outlet } = await supabaseAdmin

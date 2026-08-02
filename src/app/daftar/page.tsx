@@ -2,21 +2,19 @@
 
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { Button } from "@/components/ui/button";
-import { Field, Input, Segmented } from "@/components/ui/field";
+import { Field, Input } from "@/components/ui/field";
 import { createClient } from "@/lib/supabase/client";
 import { pesanError } from "@/lib/utils";
+import { Info } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 
-type Mode = "toko" | "undangan";
-
 export default function DaftarPage() {
   const supabase = createClient();
   const router = useRouter();
-  const [mode, setMode] = useState<Mode>("toko");
-  const [form, setForm] = useState({ full_name: "", email: "", password: "", org_name: "", code: "" });
+  const [form, setForm] = useState({ full_name: "", email: "", password: "", org_name: "" });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [info, setInfo] = useState("");
@@ -27,25 +25,15 @@ export default function DaftarPage() {
     setError("");
     setInfo("");
 
-    const meta: Record<string, string> = { full_name: form.full_name };
-    if (mode === "toko") {
-      if (!form.org_name.trim()) {
-        setLoading(false);
-        return setError("Nama toko / bisnis wajib diisi.");
-      }
-      meta.org_name = form.org_name.trim();
-    } else {
-      if (!form.code.trim()) {
-        setLoading(false);
-        return setError("Kode undangan wajib diisi.");
-      }
-      meta.invitation_code = form.code.trim().toUpperCase();
+    if (!form.org_name.trim()) {
+      setLoading(false);
+      return setError("Nama toko / bisnis wajib diisi.");
     }
 
     const { data, error } = await supabase.auth.signUp({
       email: form.email.trim().toLowerCase(),
       password: form.password,
-      options: { data: meta },
+      options: { data: { full_name: form.full_name, org_name: form.org_name.trim() } },
     });
     setLoading(false);
     if (error) {
@@ -54,7 +42,7 @@ export default function DaftarPage() {
     }
     if (data.session) {
       await supabase.auth.getSession();
-      toast.success(mode === "toko" ? "Toko Anda siap dipakai!" : "Berhasil bergabung ke organisasi");
+      toast.success("Toko Anda siap dipakai!");
       router.replace("/kasir");
     } else {
       setInfo("Akun dibuat. Cek email Anda untuk konfirmasi, lalu masuk.");
@@ -75,48 +63,33 @@ export default function DaftarPage() {
           </span>
           <span className="font-display text-base font-extrabold tracking-tight text-ink">KasirPro</span>
         </div>
-        <h1 className="mt-6 font-display text-[28px] font-extrabold tracking-tight text-ink">Buat akun</h1>
-
-        <Segmented
-          className="mt-5 w-full"
-          value={mode}
-          onChange={setMode}
-          testIdPrefix="mode"
-          items={[
-            { value: "toko", label: "Daftarkan toko baru" },
-            { value: "undangan", label: "Punya kode undangan" },
-          ]}
-        />
-
+        <h1 className="mt-6 font-display text-[28px] font-extrabold tracking-tight text-ink">Daftarkan toko baru</h1>
         <p className="mt-3 text-[13px] leading-relaxed text-dim">
-          {mode === "toko"
-            ? "Anda akan menjadi admin dari organisasi baru beserta satu outlet pusat. Data toko Anda terpisah penuh dari toko lain."
-            : "Masuk ke organisasi yang sudah ada. Gunakan email yang sama dengan yang diundang admin, beserta kode undangannya."}
+          Anda akan menjadi admin dari organisasi baru beserta satu outlet pusat. Data toko Anda terpisah penuh dari toko
+          lain.
         </p>
 
+        <div
+          data-testid="member-onboarding-note"
+          className="mt-5 flex items-start gap-2.5 rounded-xl border border-line bg-muted px-3.5 py-3 text-[12px] leading-relaxed text-dim"
+        >
+          <Info className="mt-0.5 h-3.5 w-3.5 shrink-0 text-brand" />
+          <span>
+            Karyawan / anggota tidak mendaftar di halaman ini. Akun anggota dibuat oleh admin toko dari menu{" "}
+            <span className="font-semibold text-ink">Pengguna</span>, lengkap dengan kata sandi awalnya.
+          </span>
+        </div>
+
         <form onSubmit={submit} className="mt-6 space-y-4">
-          {mode === "toko" ? (
-            <Field label="Nama toko / bisnis">
-              <Input
-                data-testid="register-org"
-                required
-                value={form.org_name}
-                onChange={(e) => setForm({ ...form, org_name: e.target.value })}
-                placeholder="Toko Sinar Jaya"
-              />
-            </Field>
-          ) : (
-            <Field label="Kode undangan">
-              <Input
-                data-testid="register-code"
-                required
-                value={form.code}
-                onChange={(e) => setForm({ ...form, code: e.target.value.toUpperCase() })}
-                placeholder="8 karakter"
-                className="font-mono tracking-[0.2em]"
-              />
-            </Field>
-          )}
+          <Field label="Nama toko / bisnis">
+            <Input
+              data-testid="register-org"
+              required
+              value={form.org_name}
+              onChange={(e) => setForm({ ...form, org_name: e.target.value })}
+              placeholder="Toko Sinar Jaya"
+            />
+          </Field>
           <Field label="Nama lengkap">
             <Input
               data-testid="register-name"
@@ -170,7 +143,7 @@ export default function DaftarPage() {
           )}
 
           <Button data-testid="register-submit" type="submit" size="lg" className="w-full" disabled={loading}>
-            {loading ? "Memproses..." : mode === "toko" ? "Daftarkan Toko" : "Gabung Organisasi"}
+            {loading ? "Memproses..." : "Daftarkan Toko"}
           </Button>
         </form>
 

@@ -3,7 +3,7 @@
 Aplikasi: Next.js 16 (port 3000) + Supabase (Auth + Postgres). Tidak ada FastAPI backend
 (hanya /api/health di port 8001 untuk health check).
 
-URL: https://75c68258-8bf2-49dd-acff-360740a203f7.preview.emergentagent.com
+URL: https://kasir-app-83.preview.emergentagent.com
 
 ## Akun
 | Peran | Email | Password |

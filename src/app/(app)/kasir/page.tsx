@@ -1,7 +1,12 @@
 "use client";
 
-import { BarcodeScanner } from "@/components/BarcodeScanner";
+import dynamic from "next/dynamic";
 import { Receipt } from "@/components/Receipt";
+
+const BarcodeScanner = dynamic(
+  () => import("@/components/BarcodeScanner").then((m) => m.BarcodeScanner),
+  { ssr: false },
+);
 import { useAuth } from "@/components/AuthProvider";
 import { Modal } from "@/components/ui/modal";
 import { createClient } from "@/lib/supabase/client";
@@ -92,12 +97,16 @@ export default function KasirPage() {
     muat();
   };
 
-  const terfilter = products.filter((p) => {
-    const cocokKategori = kategori === "semua" || p.category_id === kategori;
-    const q = cari.trim().toLowerCase();
-    const cocokCari = !q || p.name.toLowerCase().includes(q) || (p.sku ?? "").toLowerCase().includes(q);
-    return cocokKategori && cocokCari;
-  });
+  const terfilter = useMemo(
+    () =>
+      products.filter((p) => {
+        const cocokKategori = kategori === "semua" || p.category_id === kategori;
+        const q = cari.trim().toLowerCase();
+        const cocokCari = !q || p.name.toLowerCase().includes(q) || (p.sku ?? "").toLowerCase().includes(q);
+        return cocokKategori && cocokCari;
+      }),
+    [products, kategori, cari],
+  );
 
   const subtotal = lines.reduce((a, l) => a + Number(l.product.price) * l.qty, 0);
   const jumlahItem = lines.reduce((a, l) => a + l.qty, 0);

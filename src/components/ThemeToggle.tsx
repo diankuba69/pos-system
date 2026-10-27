@@ -21,8 +21,8 @@ export function ThemeToggle() {
       title={dark ? "Mode terang" : "Mode gelap"}
       className="relative flex h-9 w-9 items-center justify-center overflow-hidden rounded-lg border border-line bg-surface text-dim transition-colors duration-150 hover:border-ink/40 hover:text-ink"
     >
-      <Sun className={`h-4 w-4 transition-all duration-300 ${dark ? "-translate-y-6 opacity-0" : "opacity-100"}`} />
-      <Moon className={`absolute h-4 w-4 transition-all duration-300 ${dark ? "opacity-100" : "translate-y-6 opacity-0"}`} />
+      <Sun className={`h-4 w-4 transition-[transform,opacity] duration-300 ${dark ? "-translate-y-6 opacity-0" : "opacity-100"}`} />
+      <Moon className={`absolute h-4 w-4 transition-[transform,opacity] duration-300 ${dark ? "opacity-100" : "translate-y-6 opacity-0"}`} />
     </button>
   );
 }

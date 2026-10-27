@@ -51,3 +51,7 @@ credentials.json
 /memory/
 /test_reports/
 /.screenshots/
+
+# Python
+__pycache__/
+*.pyc

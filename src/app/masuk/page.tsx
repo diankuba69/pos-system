@@ -103,6 +103,7 @@ export default function MasukPage() {
                 type="email"
                 required
                 autoFocus
+                autoComplete="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="nama@toko.com"
@@ -112,6 +113,7 @@ export default function MasukPage() {
               <PasswordInput
                 data-testid="login-password"
                 required
+                autoComplete="current-password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"

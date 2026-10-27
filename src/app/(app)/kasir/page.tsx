@@ -393,7 +393,7 @@ export default function KasirPage() {
 
       <ShortcutModal open={bantuanOpen} onClose={() => setBantuanOpen(false)} />
 
-      <BarcodeScanner open={scanOpen} onClose={() => setScanOpen(false)} onDetected={scanKode} />
+      {scanOpen && <BarcodeScanner open onClose={() => setScanOpen(false)} onDetected={scanKode} />}
     </div>
   );
 }

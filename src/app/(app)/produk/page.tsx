@@ -12,6 +12,7 @@ import type { Category, ProductStock, Supplier } from "@/lib/types";
 import { ratakanStok } from "@/lib/types";
 import { angka, rupiah } from "@/lib/utils";
 import { AlertTriangle, Coins, Package, Pencil, Plus, Tag, Trash2 } from "lucide-react";
+import Image from "next/image";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
@@ -148,10 +149,9 @@ export default function ProdukPage() {
       sort: (p) => p.name,
       cell: (p) => (
         <div className="flex items-center gap-3">
-          <span className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-muted font-display text-[11px] font-extrabold text-dim">
+          <span className="relative flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-muted font-display text-[11px] font-extrabold text-dim">
             {p.image_url ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={p.image_url} alt={p.name} loading="lazy" decoding="async" className="h-full w-full object-cover" />
+              <Image src={p.image_url} alt={p.name} fill sizes="48px" className="object-cover" />
             ) : (
               p.name.slice(0, 2).toUpperCase()
             )}

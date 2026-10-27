@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import type { Category, ProductStock, Shift } from "@/lib/types";
 import { cn, rupiah, waktu } from "@/lib/utils";
 import { Grid2x2, Keyboard, List, Plus, ScanLine, Search } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
 import type { RefObject } from "react";
 
@@ -169,13 +170,12 @@ export function ProductPanel({
               >
                 <div className="relative aspect-square w-full overflow-hidden bg-muted">
                   {p.image_url ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
+                    <Image
                       src={p.image_url}
                       alt={p.name}
-                      loading="lazy"
-                      decoding="async"
-                      className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                      fill
+                      sizes="(max-width: 640px) 50vw, (max-width: 1280px) 25vw, 18vw"
+                      className="object-cover transition-transform duration-300 group-hover:scale-105"
                     />
                   ) : (
                     <span className="dot-bg flex h-full w-full items-center justify-center font-display text-3xl font-extrabold text-dim/40">

@@ -74,7 +74,7 @@ export default function KasirPage() {
         .eq("status", "buka")
         .maybeSingle(),
     ]);
-    if (p.error) toast.error(`Gagal memuat produk: ${p.error.message}`);
+    if (p.error) toast.error(`Gagal memuat produk: ${pesanError(p.error.message)}`);
     setProducts(ratakanStok(p.data ?? []));
     setCategories((c.data as Category[]) ?? []);
     setShift((sh?.data as Shift) ?? null);
@@ -85,16 +85,24 @@ export default function KasirPage() {
     muat();
   }, [muat]);
 
+  const [bukaKasProses, setBukaKasProses] = useState(false);
   const bukaKas = async () => {
-    const { error } = await supabase.rpc("open_shift", {
-      p_outlet_id: outletId,
-      p_opening_cash: Number(modalAwal || 0),
-      p_device_id: getDeviceId(),
-    });
-    if (error) return toast.error(pesanError(error.message));
-    toast.success("Kas dibuka, selamat bertransaksi");
-    setModalAwal("");
-    muat();
+    if (bukaKasProses) return;
+    if (Number(modalAwal || 0) < 0) return toast.error("Modal awal tidak boleh negatif");
+    setBukaKasProses(true);
+    try {
+      const { error } = await supabase.rpc("open_shift", {
+        p_outlet_id: outletId,
+        p_opening_cash: Number(modalAwal || 0),
+        p_device_id: getDeviceId(),
+      });
+      if (error) return toast.error(pesanError(error.message));
+      toast.success("Kas dibuka, selamat bertransaksi");
+      setModalAwal("");
+      muat();
+    } finally {
+      setBukaKasProses(false);
+    }
   };
 
   const terfilter = useMemo(
@@ -110,7 +118,7 @@ export default function KasirPage() {
 
   const subtotal = lines.reduce((a, l) => a + Number(l.product.price) * l.qty, 0);
   const jumlahItem = lines.reduce((a, l) => a + l.qty, 0);
-  const diskonNum = Math.min(Number(diskon || 0), subtotal);
+  const diskonNum = Math.max(0, Math.min(Number(diskon || 0), subtotal));
   const tarifPajak = Number(outlet?.tax_percent ?? 0);
   const pajak = Math.round(((subtotal - diskonNum) * tarifPajak) / 100);
   const total = subtotal - diskonNum + pajak;
@@ -319,7 +327,13 @@ export default function KasirPage() {
   return (
     <div className="grid h-full grid-cols-1 lg:grid-cols-12">
       {!loading && !shift && (
-        <ShiftGate outlet={outlet} modalAwal={modalAwal} onChangeModalAwal={setModalAwal} onOpenShift={bukaKas} />
+        <ShiftGate
+          outlet={outlet}
+          modalAwal={modalAwal}
+          onChangeModalAwal={setModalAwal}
+          onOpenShift={bukaKas}
+          proses={bukaKasProses}
+        />
       )}
 
       <ProductPanel

@@ -14,6 +14,7 @@ export type Column<T> = {
   align?: "left" | "right";
   className?: string;
   width?: string;
+  sticky?: "right";
 };
 
 export function DataTable<T>({
@@ -94,7 +95,7 @@ export function DataTable<T>({
                   setPage(0);
                 }}
                 placeholder={searchPlaceholder}
-                className="h-10 pl-9"
+                className="pl-9"
               />
             </div>
           ) : (
@@ -120,8 +121,11 @@ export function DataTable<T>({
                       key={c.key}
                       style={c.width ? { width: c.width } : undefined}
                       className={cn(
-                        "px-5 py-3 text-[10px] font-bold uppercase tracking-[0.16em] text-dim",
+                        "px-5 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-dim",
                         c.align === "right" && "text-right",
+                        c.sticky === "right" &&
+                          "sticky right-0 z-20 bg-muted shadow-[-12px_0_16px_-12px_rgba(9,9,11,0.35)]",
+                        c.className,
                       )}
                     >
                       {c.sort ? (
@@ -135,7 +139,7 @@ export function DataTable<T>({
                             }
                           }}
                           className={cn(
-                            "inline-flex items-center gap-1 transition-colors duration-150 hover:text-ink",
+                            "-mx-1 inline-flex min-h-11 items-center gap-1 px-1 transition-colors duration-150 hover:text-ink",
                             active && "text-ink",
                             c.align === "right" && "flex-row-reverse",
                           )}
@@ -174,7 +178,13 @@ export function DataTable<T>({
                   {columns.map((c) => (
                     <td
                       key={c.key}
-                      className={cn("px-5 py-3 align-middle", c.align === "right" && "text-right", c.className)}
+                      className={cn(
+                        "px-5 py-3 align-middle",
+                        c.align === "right" && "text-right",
+                        c.sticky === "right" &&
+                          "sticky right-0 z-10 bg-surface shadow-[-12px_0_16px_-12px_rgba(9,9,11,0.35)]",
+                        c.className,
+                      )}
                     >
                       {c.cell(row)}
                     </td>
@@ -197,7 +207,8 @@ export function DataTable<T>({
               data-testid="table-prev"
               disabled={current === 0}
               onClick={() => setPage(current - 1)}
-              className="rounded-lg border border-line p-1.5 transition-colors duration-150 hover:text-ink disabled:opacity-35"
+              aria-label="Halaman sebelumnya"
+              className="flex h-11 w-11 items-center justify-center rounded-lg border border-line transition-colors duration-150 hover:text-ink disabled:opacity-35"
             >
               <ChevronLeft className="h-4 w-4" />
             </button>
@@ -208,7 +219,8 @@ export function DataTable<T>({
               data-testid="table-next"
               disabled={current >= pages - 1}
               onClick={() => setPage(current + 1)}
-              className="rounded-lg border border-line p-1.5 transition-colors duration-150 hover:text-ink disabled:opacity-35"
+              aria-label="Halaman berikutnya"
+              className="flex h-11 w-11 items-center justify-center rounded-lg border border-line transition-colors duration-150 hover:text-ink disabled:opacity-35"
             >
               <ChevronRight className="h-4 w-4" />
             </button>

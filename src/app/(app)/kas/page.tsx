@@ -40,6 +40,7 @@ export default function KasPage() {
   const [uangFisik, setUangFisik] = useState("");
   const [catatan, setCatatan] = useState("");
   const [hasil, setHasil] = useState<Ringkasan | null>(null);
+  const [prosesShift, setProsesShift] = useState(false);
 
   const muat = useCallback(async () => {
     if (!session?.user || !orgId || !outletId) return;
@@ -83,33 +84,46 @@ export default function KasPage() {
   }, [muat]);
 
   const buka = async () => {
-    const { error } = await supabase.rpc("open_shift", {
-      p_outlet_id: outletId,
-      p_opening_cash: Number(modalAwal || 0),
-      p_device_id: getDeviceId(),
-    });
-    if (error) return toast.error(pesanError(error.message));
-    toast.success("Kas dibuka");
-    setBukaOpen(false);
-    setModalAwal("");
-    muat();
+    if (prosesShift) return;
+    if (Number(modalAwal || 0) < 0) return toast.error("Modal awal tidak boleh negatif");
+    setProsesShift(true);
+    try {
+      const { error } = await supabase.rpc("open_shift", {
+        p_outlet_id: outletId,
+        p_opening_cash: Number(modalAwal || 0),
+        p_device_id: getDeviceId(),
+      });
+      if (error) return toast.error(pesanError(error.message));
+      toast.success("Kas dibuka");
+      setBukaOpen(false);
+      setModalAwal("");
+      muat();
+    } finally {
+      setProsesShift(false);
+    }
   };
 
   const tutup = async () => {
-    if (!aktif) return;
-    const { data, error } = await supabase.rpc("close_shift", {
-      p_shift_id: aktif.id,
-      p_actual_cash: Number(uangFisik || 0),
-      p_note: catatan || null,
-      p_device_id: getDeviceId(),
-    });
-    if (error) return toast.error(pesanError(error.message));
-    setHasil(data as Ringkasan);
-    setTutupOpen(false);
-    setUangFisik("");
-    setCatatan("");
-    toast.success("Kas ditutup");
-    muat();
+    if (!aktif || prosesShift) return;
+    if (Number(uangFisik || 0) < 0) return toast.error("Uang fisik tidak boleh negatif");
+    setProsesShift(true);
+    try {
+      const { data, error } = await supabase.rpc("close_shift", {
+        p_shift_id: aktif.id,
+        p_actual_cash: Number(uangFisik || 0),
+        p_note: catatan || null,
+        p_device_id: getDeviceId(),
+      });
+      if (error) return toast.error(pesanError(error.message));
+      setHasil(data as Ringkasan);
+      setTutupOpen(false);
+      setUangFisik("");
+      setCatatan("");
+      toast.success("Kas ditutup");
+      muat();
+    } finally {
+      setProsesShift(false);
+    }
   };
 
   const seharusnya = (aktif ? Number(aktif.opening_cash) : 0) + penjualanTunai;
@@ -128,13 +142,19 @@ export default function KasPage() {
         ]
       : []),
     { key: "buka", header: "Buka", sort: (s) => s.opened_at, cell: (s) => <span className="font-mono text-[11px] text-dim">{tanggal(s.opened_at)}</span> },
-    { key: "tutup", header: "Tutup", cell: (s) => <span className="font-mono text-[11px] text-dim">{s.closed_at ? tanggal(s.closed_at) : "-"}</span> },
+    {
+      key: "tutup",
+      header: "Tutup",
+      className: "hidden lg:table-cell",
+      cell: (s) => <span className="font-mono text-[11px] text-dim">{s.closed_at ? tanggal(s.closed_at) : "-"}</span>,
+    },
     { key: "modal", header: "Modal awal", align: "right", sort: (s) => Number(s.opening_cash), cell: (s) => <span className="font-mono tabular-nums text-dim">{rupiah(s.opening_cash)}</span> },
     { key: "tunai", header: "Tunai", align: "right", sort: (s) => Number(s.sales_cash), cell: (s) => <span className="font-mono tabular-nums text-dim">{rupiah(s.sales_cash)}</span> },
     {
       key: "aktual",
       header: "Aktual",
       align: "right",
+      className: "hidden md:table-cell",
       cell: (s) => <span className="font-mono tabular-nums text-dim">{s.closing_cash === null ? "-" : rupiah(s.closing_cash)}</span>,
     },
     {
@@ -153,7 +173,12 @@ export default function KasPage() {
         </span>
       ),
     },
-    { key: "status", header: "Status", cell: (s) => <Badge tone={s.status === "buka" ? "green" : "zinc"}>{s.status}</Badge> },
+    {
+      key: "status",
+      header: "Status",
+      sticky: "right",
+      cell: (s) => <Badge tone={s.status === "buka" ? "green" : "zinc"}>{s.status}</Badge>,
+    },
   ];
 
   return (
@@ -248,8 +273,8 @@ export default function KasPage() {
             <Button variant="outline" onClick={() => setBukaOpen(false)}>
               Batal
             </Button>
-            <Button data-testid="confirm-open-shift" onClick={buka}>
-              Buka Kas
+            <Button data-testid="confirm-open-shift" onClick={buka} disabled={prosesShift}>
+              {prosesShift ? "Memproses..." : "Buka Kas"}
             </Button>
           </div>
         </div>
@@ -308,8 +333,8 @@ export default function KasPage() {
             <Button variant="outline" onClick={() => setTutupOpen(false)}>
               Batal
             </Button>
-            <Button data-testid="confirm-close-shift" variant="subtle" onClick={tutup}>
-              Tutup Kas
+            <Button data-testid="confirm-close-shift" variant="subtle" onClick={tutup} disabled={prosesShift}>
+              {prosesShift ? "Memproses..." : "Tutup Kas"}
             </Button>
           </div>
         </div>

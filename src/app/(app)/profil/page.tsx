@@ -35,7 +35,7 @@ export default function ProfilPage() {
     setSimpanNama(true);
     const { error } = await supabase.from("profiles").update({ full_name: nama.trim() }).eq("id", session!.user.id);
     setSimpanNama(false);
-    if (error) return toast.error(error.message);
+    if (error) return toast.error(pesanError(error.message));
     toast.success("Nama diperbarui");
     await refresh();
   };

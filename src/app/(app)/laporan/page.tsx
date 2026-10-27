@@ -7,7 +7,7 @@ import { Empty, PageHeader, Panel, SectionTitle, Skeleton, StatCard } from "@/co
 import { createClient } from "@/lib/supabase/client";
 import type { ProductStock, Transaction } from "@/lib/types";
 import { ratakanStok } from "@/lib/types";
-import { angka, delta, namaHari, rupiah, tanggalPendek, unduhCsv } from "@/lib/utils";
+import { angka, delta, namaHari, pesanError, rupiah, tanggalPendek, unduhCsv } from "@/lib/utils";
 import dynamic from "next/dynamic";
 
 const Charts = dynamic(() => import("./charts"), {
@@ -87,7 +87,7 @@ export default function LaporanPage() {
     if (lingkup === "outlet") pq = pq.eq("outlet_stock.outlet_id", outletId!);
 
     const [t, p] = await Promise.all([tq, pq]);
-    if (t.error) toast.error(t.error.message);
+    if (t.error) toast.error(pesanError(t.error.message));
     const semua = (t.data as Transaction[]) ?? [];
     setTxs(semua.filter((x) => new Date(x.created_at) >= mulai));
     setPrevTxs(semua.filter((x) => new Date(x.created_at) < mulai));

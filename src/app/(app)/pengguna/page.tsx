@@ -9,7 +9,7 @@ import { Badge, PageHeader, Panel, StatCard } from "@/components/ui/misc";
 import { Modal } from "@/components/ui/modal";
 import { createClient } from "@/lib/supabase/client";
 import type { Membership } from "@/lib/types";
-import { angka, tanggal } from "@/lib/utils";
+import { angka, pesanError, tanggal } from "@/lib/utils";
 import { Check, Copy, Info, KeyRound, Pencil, RefreshCw, ShieldCheck, Shuffle, Smartphone, Trash2, UserPlus, Users } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
@@ -49,7 +49,7 @@ export default function PenggunaPage() {
       .select("*, profiles(*), outlets(name)")
       .eq("organization_id", orgId)
       .order("created_at");
-    if (error) toast.error(error.message);
+    if (error) toast.error(pesanError(error.message));
     setRows((data as Membership[]) ?? []);
     setLoading(false);
   }, [supabase, orgId]);
@@ -65,7 +65,7 @@ export default function PenggunaPage() {
 
   const ubahRole = async (m: Membership, role: string) => {
     const { data, error } = await supabase.from("organization_memberships").update({ role }).eq("id", m.id).select();
-    if (error) return toast.error(error.message);
+    if (error) return toast.error(pesanError(error.message));
     if (!data || data.length === 0) return toast.error("Gagal: hanya admin organisasi yang boleh mengubah peran.");
     toast.success("Peran diperbarui");
     muat();
@@ -87,7 +87,7 @@ export default function PenggunaPage() {
       .update({ is_active: !m.is_active })
       .eq("id", m.id)
       .select();
-    if (error) return toast.error(error.message);
+    if (error) return toast.error(pesanError(error.message));
     if (!data || data.length === 0) return toast.error("Gagal mengubah status anggota.");
     toast.success("Status anggota diperbarui");
     muat();
@@ -101,7 +101,7 @@ export default function PenggunaPage() {
     });
     if (!ok) return;
     const { error } = await supabase.rpc("admin_unlock_device", { p_org: orgId, p_user_id: m.user_id });
-    if (error) return toast.error(error.message);
+    if (error) return toast.error(pesanError(error.message));
     toast.success("Kunci device dicabut.");
     muat();
   };
@@ -191,7 +191,7 @@ export default function PenggunaPage() {
       .update({ default_outlet_id: editForm.outlet_id || null })
       .eq("id", edit.id);
     setMenyimpan(false);
-    if (error) return toast.error(error.message);
+    if (error) return toast.error(pesanError(error.message));
     toast.success("Data anggota diperbarui");
     setEdit(null);
     muat();
@@ -246,8 +246,19 @@ export default function PenggunaPage() {
         </div>
       ),
     },
-    { key: "outlet", header: "Outlet utama", cell: (m) => <span className="text-dim">{m.outlets?.name ?? "semua outlet"}</span> },
-    { key: "gabung", header: "Bergabung", sort: (m) => m.created_at, cell: (m) => <span className="font-mono text-[11px] text-dim">{tanggal(m.created_at)}</span> },
+    {
+      key: "outlet",
+      header: "Outlet utama",
+      className: "hidden lg:table-cell",
+      cell: (m) => <span className="text-dim">{m.outlets?.name ?? "semua outlet"}</span>,
+    },
+    {
+      key: "gabung",
+      header: "Bergabung",
+      className: "hidden md:table-cell",
+      sort: (m) => m.created_at,
+      cell: (m) => <span className="font-mono text-[11px] text-dim">{tanggal(m.created_at)}</span>,
+    },
     {
       key: "status",
       header: "Status",
@@ -330,6 +341,7 @@ export default function PenggunaPage() {
       key: "aksi",
       header: "Aksi",
       width: "110px",
+      sticky: "right",
       cell: (m) =>
         m.user_id === session?.user?.id ? (
           <span className="text-dim">-</span>
@@ -346,7 +358,7 @@ export default function PenggunaPage() {
                   outlet_id: m.default_outlet_id ?? "",
                 });
               }}
-              className="rounded-lg p-1.5 text-dim transition-colors duration-150 hover:bg-muted hover:text-ink"
+              className="flex h-11 w-11 items-center justify-center rounded-lg text-dim transition-colors duration-150 hover:bg-muted hover:text-ink"
             >
               <Pencil className="h-3.5 w-3.5" />
             </button>
@@ -355,7 +367,7 @@ export default function PenggunaPage() {
               title="Hapus anggota"
               disabled={menghapus === m.user_id}
               onClick={() => hapusAnggota(m)}
-              className="rounded-lg p-1.5 text-dim transition-colors duration-150 hover:bg-bad-soft hover:text-bad disabled:opacity-50"
+              className="flex h-11 w-11 items-center justify-center rounded-lg text-dim transition-colors duration-150 hover:bg-bad-soft hover:text-bad disabled:opacity-50"
             >
               <Trash2 className="h-3.5 w-3.5" />
             </button>

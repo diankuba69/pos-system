@@ -10,10 +10,11 @@ type ShiftGateProps = {
   modalAwal: string;
   onChangeModalAwal: (v: string) => void;
   onOpenShift: () => void;
+  proses?: boolean;
 };
 
 /** Overlay wajib buka kas sebelum kasir bisa mulai bertransaksi. */
-export function ShiftGate({ outlet, modalAwal, onChangeModalAwal, onOpenShift }: ShiftGateProps) {
+export function ShiftGate({ outlet, modalAwal, onChangeModalAwal, onOpenShift, proses }: ShiftGateProps) {
   return (
     <div
       data-testid="shift-gate"
@@ -44,8 +45,8 @@ export function ShiftGate({ outlet, modalAwal, onChangeModalAwal, onOpenShift }:
             className="h-14 text-right font-display text-2xl font-extrabold tabular-nums"
           />
         </div>
-        <Button data-testid="gate-open-shift" size="lg" className="mt-5 w-full" onClick={onOpenShift}>
-          Buka Kas & Mulai Transaksi
+        <Button data-testid="gate-open-shift" size="lg" className="mt-5 w-full" onClick={onOpenShift} disabled={proses}>
+          {proses ? "Memproses..." : "Buka Kas & Mulai Transaksi"}
         </Button>
       </div>
     </div>

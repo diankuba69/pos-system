@@ -111,7 +111,7 @@ export function PaymentModal({
                   <button
                     data-testid="quick-exact"
                     onClick={() => onChangeDibayar(String(total))}
-                    className="rounded-full border border-line px-3 py-1 text-[11px] font-bold text-dim transition-colors duration-150 hover:border-ink/40 hover:text-ink"
+                    className="inline-flex min-h-11 items-center rounded-full border border-line px-3 py-1 text-[11px] font-bold text-dim transition-colors duration-150 hover:border-ink/40 hover:text-ink"
                   >
                     Uang pas
                   </button>
@@ -120,7 +120,7 @@ export function PaymentModal({
                       key={n}
                       data-testid={`quick-${n}`}
                       onClick={() => onChangeDibayar(String(Number(dibayar || 0) + n))}
-                      className="rounded-full border border-line px-3 py-1 font-mono text-[11px] font-bold tabular-nums text-dim transition-colors duration-150 hover:border-ink/40 hover:text-ink"
+                      className="inline-flex min-h-11 items-center rounded-full border border-line px-3 py-1 font-mono text-[11px] font-bold tabular-nums text-dim transition-colors duration-150 hover:border-ink/40 hover:text-ink"
                     >
                       +{n / 1000}rb
                     </button>

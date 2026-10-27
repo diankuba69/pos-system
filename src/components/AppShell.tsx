@@ -14,6 +14,7 @@ import {
   ChevronsUpDown,
   Command,
   LogOut,
+  MoreHorizontal,
   Package,
   PanelsTopLeft,
   ReceiptText,
@@ -25,6 +26,7 @@ import {
   UserCog,
   Users,
   Wallet,
+  X,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -69,7 +71,7 @@ function TenantSwitcher() {
       <button
         data-testid="tenant-switcher"
         onClick={() => setOpen((o) => !o)}
-        className="flex max-w-[260px] items-center gap-2.5 rounded-xl border border-line bg-surface px-3 py-1.5 text-left transition-colors duration-150 hover:border-ink/30"
+        className="flex max-w-[196px] items-center gap-2.5 rounded-xl border border-line bg-surface px-3 py-1.5 text-left transition-colors duration-150 hover:border-ink/30 min-[420px]:max-w-[260px]"
       >
         <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-brand-soft text-brand">
           <Building2 className="h-3.5 w-3.5" />
@@ -86,7 +88,7 @@ function TenantSwitcher() {
       {open && (
         <div
           data-testid="tenant-menu"
-          className="anim-pop absolute right-0 z-[60] mt-1.5 w-72 overflow-hidden rounded-xl border border-line bg-surface p-1.5 shadow-[var(--shadow-pop)]"
+          className="anim-pop fixed right-2 top-[3.75rem] z-[60] w-[min(18rem,calc(100vw-1rem))] overflow-hidden rounded-xl border border-line bg-surface p-1.5 shadow-[var(--shadow-pop)] sm:absolute sm:right-0 sm:top-full sm:mt-1.5 sm:w-72"
         >
           <p className="px-2.5 py-1.5 text-[9px] font-bold uppercase tracking-[0.2em] text-dim">Organisasi</p>
           {memberships.map((m) => (
@@ -152,6 +154,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const [collapsed, setCollapsed] = useState(() => typeof window !== "undefined" && localStorage.getItem("kasirpro-sidebar") === "1");
   const [palette, setPalette] = useState(false);
+  const [mobileMenu, setMobileMenu] = useState(false);
   const [q, setQ] = useState("");
   const [lowStock, setLowStock] = useState(0);
 
@@ -179,6 +182,19 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, []);
+
+  useEffect(() => {
+    if (!mobileMenu) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setMobileMenu(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [mobileMenu]);
+
+  const primaryMobileItems = items.length > 5 ? items.slice(0, 4) : items;
+  const overflowMobileItems = items.length > 5 ? items.slice(4) : [];
+  const overflowActive = overflowMobileItems.some((i) => navAktif(pathname, i.href));
 
   const active = items.find((i) => navAktif(pathname, i.href));
   const hasil = items.filter((i) => i.label.toLowerCase().includes(q.trim().toLowerCase()));
@@ -334,7 +350,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           className="no-print fixed bottom-0 left-0 right-0 z-40 flex items-center justify-around border-t border-line bg-surface px-1 py-1.5 lg:hidden"
           style={{ paddingBottom: "calc(0.375rem + env(safe-area-inset-bottom))" }}
         >
-          {items.slice(0, 5).map((item) => {
+          {primaryMobileItems.map((item) => {
             const on = navAktif(pathname, item.href);
             const Icon = item.icon;
             const showAlert = item.href === "/produk" && lowStock > 0;
@@ -344,7 +360,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 href={item.href}
                 data-testid={`mobilenav-${item.label.toLowerCase().split(" ")[0]}`}
                 className={cn(
-                  "flex flex-1 flex-col items-center gap-0.5 rounded-lg py-1.5 text-[10px] font-semibold transition-colors duration-150",
+                  "flex min-h-11 flex-1 flex-col items-center justify-center gap-0.5 rounded-lg py-1.5 text-[10px] font-semibold transition-colors duration-150",
                   on ? "text-ink" : "text-dim",
                 )}
               >
@@ -361,7 +377,91 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               </Link>
             );
           })}
+          {overflowMobileItems.length > 0 && (
+            <button
+              type="button"
+              data-testid="mobilenav-lainnya"
+              aria-expanded={mobileMenu}
+              onClick={() => setMobileMenu((v) => !v)}
+              className={cn(
+                "flex min-h-11 flex-1 flex-col items-center justify-center gap-0.5 rounded-lg py-1.5 text-[10px] font-semibold transition-colors duration-150",
+                overflowActive || mobileMenu ? "text-ink" : "text-dim",
+              )}
+            >
+              <span className="relative">
+                <MoreHorizontal className="h-[18px] w-[18px]" />
+                {overflowMobileItems.some((i) => i.href === "/produk") && lowStock > 0 && (
+                  <span
+                    data-testid="low-stock-dot-mobile"
+                    className="absolute -right-1 -top-1 h-2 w-2 rounded-full bg-bad ring-2 ring-surface"
+                  />
+                )}
+              </span>
+              Lainnya
+            </button>
+          )}
         </nav>
+
+        {mobileMenu && overflowMobileItems.length > 0 && (
+          <div
+            className="no-print fixed inset-0 z-[60] flex flex-col justify-end bg-zinc-950/45 backdrop-blur-[3px] lg:hidden"
+            onMouseDown={(e) => {
+              if (e.target === e.currentTarget) setMobileMenu(false);
+            }}
+          >
+            <div
+              data-testid="mobile-menu-sheet"
+              className="anim-pop rounded-t-2xl border-t border-line bg-surface px-4 pt-2.5 shadow-[var(--shadow-pop)]"
+              style={{ paddingBottom: "calc(1rem + env(safe-area-inset-bottom))" }}
+            >
+              <div className="relative flex items-center justify-center pb-2">
+                <span className="h-1 w-10 rounded-full bg-line" />
+                <button
+                  type="button"
+                  data-testid="mobile-menu-close"
+                  aria-label="Tutup menu"
+                  onClick={() => setMobileMenu(false)}
+                  className="absolute right-0 top-0 flex h-11 w-11 items-center justify-center rounded-lg text-dim transition-colors duration-150 hover:bg-muted hover:text-ink"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+              <p className="pb-2 font-display text-sm font-extrabold tracking-tight text-ink">Menu lainnya</p>
+              <nav className="grid grid-cols-2 gap-2">
+                {overflowMobileItems.map((item) => {
+                  const on = navAktif(pathname, item.href);
+                  const Icon = item.icon;
+                  const showAlert = item.href === "/produk" && lowStock > 0;
+                  return (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      data-testid={`mobilemenu-${item.label.toLowerCase().split(" ")[0]}`}
+                      onClick={() => setMobileMenu(false)}
+                      className={cn(
+                        "flex min-h-12 items-center gap-2.5 rounded-xl border px-3 text-sm font-semibold transition-colors duration-150",
+                        on ? "border-ink bg-ink text-bg" : "border-line bg-surface text-ink hover:bg-muted",
+                      )}
+                    >
+                      <span className="relative shrink-0">
+                        <Icon className="h-[18px] w-[18px]" />
+                        {showAlert && (
+                          <span className="absolute -right-1 -top-1 h-2 w-2 rounded-full bg-bad ring-2 ring-surface" />
+                        )}
+                      </span>
+                      <span className="min-w-0 flex-1 truncate">{item.label}</span>
+                      {showAlert && (
+                        <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-bad px-1 font-mono text-[10px] font-bold tabular-nums text-white">
+                          {lowStock}
+                        </span>
+                      )}
+                    </Link>
+                  );
+                })}
+              </nav>
+            </div>
+          </div>
+        )}
       </div>
 
       {palette && (

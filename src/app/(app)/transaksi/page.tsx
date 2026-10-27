@@ -9,7 +9,7 @@ import { Badge, PageHeader, StatCard } from "@/components/ui/misc";
 import { Sheet } from "@/components/ui/modal";
 import { createClient } from "@/lib/supabase/client";
 import type { Transaction } from "@/lib/types";
-import { angka, cn, rupiah, tanggal, unduhCsv, waktu } from "@/lib/utils";
+import { angka, cn, pesanError, rupiah, tanggal, unduhCsv, waktu } from "@/lib/utils";
 import { Download, Package, ReceiptText, Wallet } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
@@ -56,7 +56,7 @@ export default function TransaksiPage() {
       .limit(5000);
     if (lingkup === "outlet") q = q.eq("outlet_id", outletId);
     const t = await q;
-    if (t.error) toast.error(t.error.message);
+    if (t.error) toast.error(pesanError(t.error.message));
     setRows((t.data as Transaction[]) ?? []);
     setLoading(false);
   }, [supabase, dari, sampai, orgId, outletId, lingkup]);
@@ -81,7 +81,13 @@ export default function TransaksiPage() {
         </div>
       ),
     },
-    { key: "waktu", header: "Waktu", sort: (t) => t.created_at, cell: (t) => <span className="text-dim">{tanggal(t.created_at)}</span> },
+    {
+      key: "waktu",
+      header: "Waktu",
+      className: "hidden md:table-cell",
+      sort: (t) => t.created_at,
+      cell: (t) => <span className="text-dim">{tanggal(t.created_at)}</span>,
+    },
     ...(lingkup === "org"
       ? [
           {
@@ -114,6 +120,7 @@ export default function TransaksiPage() {
       key: "total",
       header: "Total",
       align: "right",
+      sticky: "right",
       sort: (t) => Number(t.total),
       cell: (t) => <span className="font-display text-sm font-extrabold tabular-nums text-ink">{rupiah(t.total)}</span>,
     },
@@ -172,7 +179,7 @@ export default function TransaksiPage() {
                 setSampai(p.to());
               }}
               className={cn(
-                "rounded-full border px-3.5 py-1.5 text-xs font-bold transition-colors duration-150",
+                "inline-flex min-h-11 items-center rounded-full border px-3.5 py-1.5 text-xs font-bold transition-colors duration-150",
                 aktifPreset === p.label
                   ? "border-ink bg-ink text-bg"
                   : "border-line bg-surface text-dim hover:border-ink/40 hover:text-ink",

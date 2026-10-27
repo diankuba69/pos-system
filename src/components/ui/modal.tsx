@@ -40,6 +40,9 @@ export function Modal({
     >
       <div
         data-testid={testId}
+        role="dialog"
+        aria-modal="true"
+        aria-label={title}
         className={cn("anim-pop card w-full shadow-[var(--shadow-pop)]", width)}
       >
         <div className="flex items-start justify-between gap-4 border-b border-line px-6 py-4">
@@ -50,7 +53,8 @@ export function Modal({
           <button
             onClick={onClose}
             data-testid="modal-close"
-            className="-mr-1 rounded-lg p-1.5 text-dim transition-colors duration-150 hover:bg-muted hover:text-ink"
+            aria-label="Tutup"
+            className="-mr-2.5 flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-dim transition-colors duration-150 hover:bg-muted hover:text-ink"
           >
             <X className="h-4 w-4" />
           </button>
@@ -95,6 +99,9 @@ export function Sheet({
     >
       <div
         data-testid={testId}
+        role="dialog"
+        aria-modal="true"
+        aria-label={title}
         className="anim-left flex h-full w-full max-w-md flex-col border-l border-line bg-surface shadow-[var(--shadow-pop)]"
       >
         <div className="flex items-start justify-between gap-4 border-b border-line px-6 py-4">
@@ -105,7 +112,8 @@ export function Sheet({
           <button
             onClick={onClose}
             data-testid="sheet-close"
-            className="-mr-1 rounded-lg p-1.5 text-dim transition-colors duration-150 hover:bg-muted hover:text-ink"
+            aria-label="Tutup"
+            className="-mr-2.5 flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-dim transition-colors duration-150 hover:bg-muted hover:text-ink"
           >
             <X className="h-4 w-4" />
           </button>

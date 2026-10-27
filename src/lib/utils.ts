@@ -56,6 +56,7 @@ export function unduhCsv(namaFile: string, baris: (string | number)[][]) {
 }
 
 const PETA_ERROR: [RegExp, string][] = [
+  [/Failed to fetch|NetworkError|network request failed|Load failed/i, "Tidak ada koneksi internet. Periksa jaringan Anda lalu coba lagi."],
   [/Signups not allowed/i, "Pendaftaran akun baru sedang dinonaktifkan pada server. Hubungi admin toko untuk dibuatkan akses."],
   [/Invalid login credentials/i, "Email atau kata sandi salah."],
   [/Email not confirmed/i, "Email belum dikonfirmasi. Cek inbox Anda."],

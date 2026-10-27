@@ -40,7 +40,7 @@ export function PasswordInput({ className, ...props }: ComponentPropsWithRef<"in
         data-testid={typeof testId === "string" ? `${testId}-toggle` : undefined}
         onClick={() => setShow((s) => !s)}
         aria-label={show ? "Sembunyikan kata sandi" : "Tampilkan kata sandi"}
-        className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-1.5 text-dim transition-colors duration-150 hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+        className="absolute right-0 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-md text-dim transition-colors duration-150 hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
       >
         {show ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
       </button>
@@ -153,18 +153,24 @@ export function Toggle({
       data-testid={testId}
       onClick={() => onChange(!checked)}
       className={cn(
-        "relative inline-flex h-6 w-11 shrink-0 items-center rounded-full border transition-colors duration-200",
+        "inline-flex h-11 w-[52px] shrink-0 items-center justify-center rounded-full",
         "focus:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:ring-offset-bg",
-        checked ? "border-brand bg-brand" : "border-line bg-muted",
       )}
     >
       <span
         className={cn(
-          "block h-4.5 w-4.5 rounded-full bg-white shadow transition-transform duration-200",
-          checked ? "translate-x-[22px]" : "translate-x-[3px]",
+          "relative inline-flex h-6 w-11 shrink-0 items-center rounded-full border transition-colors duration-200",
+          checked ? "border-brand bg-brand" : "border-line bg-muted",
         )}
-        style={{ height: 18, width: 18 }}
-      />
+      >
+        <span
+          className={cn(
+            "block rounded-full bg-white shadow transition-transform duration-200",
+            checked ? "translate-x-[22px]" : "translate-x-[3px]",
+          )}
+          style={{ height: 18, width: 18 }}
+        />
+      </span>
     </button>
   );
 }
@@ -190,7 +196,7 @@ export function Segmented<T extends string>({
           data-testid={testIdPrefix ? `${testIdPrefix}-${it.value}` : undefined}
           onClick={() => onChange(it.value)}
           className={cn(
-            "inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors duration-150",
+            "inline-flex min-h-11 items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors duration-150",
             value === it.value ? "bg-surface text-ink shadow-sm" : "text-dim hover:text-ink",
           )}
         >

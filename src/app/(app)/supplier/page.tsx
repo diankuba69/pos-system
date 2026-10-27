@@ -9,6 +9,7 @@ import { PageHeader } from "@/components/ui/misc";
 import { Modal } from "@/components/ui/modal";
 import { createClient } from "@/lib/supabase/client";
 import type { Supplier } from "@/lib/types";
+import { pesanError } from "@/lib/utils";
 import { Mail, Pencil, Phone, Plus, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
@@ -23,6 +24,7 @@ export default function SupplierPage() {
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({ ...kosong });
 
   const muat = useCallback(async () => {
@@ -32,7 +34,7 @@ export default function SupplierPage() {
       .select("*")
       .eq("organization_id", orgId)
       .order("name");
-    if (error) toast.error(error.message);
+    if (error) toast.error(pesanError(error.message));
     setRows((data as Supplier[]) ?? []);
     setLoading(false);
   }, [supabase, orgId]);
@@ -42,7 +44,12 @@ export default function SupplierPage() {
   }, [muat]);
 
   const simpan = async () => {
+    if (saving) return;
     if (!form.name.trim()) return toast.error("Nama supplier wajib diisi");
+    if (form.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim()))
+      return toast.error("Format email supplier tidak valid");
+    setSaving(true);
+    try {
     const payload = {
       name: form.name.trim(),
       contact_person: form.contact_person || null,
@@ -54,12 +61,15 @@ export default function SupplierPage() {
     const { error } = editId
       ? await supabase.from("suppliers").update(payload).eq("id", editId)
       : await supabase.from("suppliers").insert({ ...payload, organization_id: orgId });
-    if (error) return toast.error(error.message);
+    if (error) return toast.error(pesanError(error.message));
     toast.success(editId ? "Supplier diperbarui" : "Supplier ditambahkan");
     setOpen(false);
     setEditId(null);
     setForm({ ...kosong });
     muat();
+    } finally {
+      setSaving(false);
+    }
   };
 
   const columns: Column<Supplier>[] = [
@@ -138,7 +148,7 @@ export default function SupplierPage() {
               });
               if (!ok) return;
               const { error } = await supabase.from("suppliers").delete().eq("id", s.id);
-              if (error) return toast.error(error.message);
+              if (error) return toast.error(pesanError(error.message));
               toast.success("Supplier dihapus");
               muat();
             }}
@@ -225,8 +235,8 @@ export default function SupplierPage() {
           <Button variant="outline" onClick={() => setOpen(false)}>
             Batal
           </Button>
-          <Button data-testid="save-supplier" onClick={simpan}>
-            Simpan
+          <Button data-testid="save-supplier" onClick={simpan} disabled={saving}>
+            {saving ? "Menyimpan..." : "Simpan"}
           </Button>
         </div>
       </Modal>

@@ -8,7 +8,7 @@ import { Badge, PageHeader, Panel, SectionTitle, Skeleton } from "@/components/u
 import { Modal } from "@/components/ui/modal";
 import { createClient } from "@/lib/supabase/client";
 import type { Organization, Outlet } from "@/lib/types";
-import { rupiah } from "@/lib/utils";
+import { pesanError, rupiah } from "@/lib/utils";
 import { AlertTriangle, Building2, Plus, RotateCcw, Save, Store, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
@@ -56,14 +56,16 @@ export default function PengaturanPage() {
   const simpanOrg = async () => {
     if (!org) return;
     const { data, error } = await supabase.from("organizations").update({ name: org.name }).eq("id", org.id).select();
-    if (error) return toast.error(error.message);
+    if (error) return toast.error(pesanError(error.message));
     if (!data?.length) return toast.error("Hanya admin yang boleh mengubah organisasi.");
     toast.success("Nama organisasi disimpan");
     await refresh();
   };
 
   const simpanOutlet = async () => {
-    if (!form) return;
+    if (!form || saving) return;
+    if (Number(form.tax_rate || 0) < 0 || Number(form.tax_rate || 0) > 100)
+      return toast.error("Tarif pajak harus antara 0 sampai 100 persen");
     setSaving(true);
     const { data, error } = await supabase
       .from("outlets")
@@ -79,21 +81,25 @@ export default function PengaturanPage() {
       .eq("id", form.id)
       .select();
     setSaving(false);
-    if (error) return toast.error(error.message);
+    if (error) return toast.error(pesanError(error.message));
     if (!data?.length) return toast.error("Hanya admin yang boleh mengubah outlet.");
     setForm(data[0] as Outlet);
     toast.success(`Outlet disimpan — pajak ${(data[0] as Outlet).tax_enabled ? "aktif" : "nonaktif"}`);
     muat();
   };
 
+  const [menambahOutlet, setMenambahOutlet] = useState(false);
   const tambahOutlet = async () => {
+    if (menambahOutlet) return;
     if (!baru.name.trim() || !baru.code.trim()) return toast.error("Nama dan kode outlet wajib diisi");
+    setMenambahOutlet(true);
+    try {
     const { data, error } = await supabase
       .from("outlets")
       .insert({ organization_id: orgId, name: baru.name.trim(), code: baru.code.trim().toUpperCase() })
       .select("id")
       .single();
-    if (error) return toast.error(error.message);
+    if (error) return toast.error(pesanError(error.message));
     // Sediakan baris stok 0 untuk semua produk agar outlet langsung bisa berjualan.
     const { data: prods } = await supabase.from("products").select("id, min_stock").eq("organization_id", orgId);
     const rows = ((prods as { id: string; min_stock: number }[]) ?? []).map((p) => ({
@@ -108,6 +114,9 @@ export default function PengaturanPage() {
     setBaru({ name: "", code: "" });
     toast.success("Outlet ditambahkan");
     muat();
+    } finally {
+      setMenambahOutlet(false);
+    }
   };
 
   const hapusOutlet = async (o: Outlet) => {
@@ -119,7 +128,7 @@ export default function PengaturanPage() {
     });
     if (!ok) return;
     const { error } = await supabase.from("outlets").delete().eq("id", o.id);
-    if (error) return toast.error(error.message);
+    if (error) return toast.error(pesanError(error.message));
     toast.success("Outlet dihapus");
     setPilih(null);
     muat();
@@ -223,7 +232,7 @@ export default function PengaturanPage() {
               setPilih(o.id);
               setForm(o);
             }}
-            className={`flex items-center gap-2 rounded-full border px-3.5 py-1.5 text-xs font-bold transition-colors duration-150 ${
+            className={`flex min-h-11 items-center gap-2 rounded-full border px-3.5 py-1.5 text-xs font-bold transition-colors duration-150 ${
               pilih === o.id ? "border-ink bg-ink text-bg" : "border-line bg-surface text-dim hover:border-ink/40 hover:text-ink"
             }`}
           >
@@ -514,8 +523,8 @@ export default function PengaturanPage() {
             <Button variant="outline" onClick={() => setBarModal(false)}>
               Batal
             </Button>
-            <Button data-testid="save-outlet" onClick={tambahOutlet}>
-              Tambah Outlet
+            <Button data-testid="save-outlet" onClick={tambahOutlet} disabled={menambahOutlet}>
+              {menambahOutlet ? "Menambahkan..." : "Tambah Outlet"}
             </Button>
           </div>
         </div>

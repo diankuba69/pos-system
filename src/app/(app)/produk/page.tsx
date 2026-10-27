@@ -10,7 +10,7 @@ import { Modal } from "@/components/ui/modal";
 import { createClient } from "@/lib/supabase/client";
 import type { Category, ProductStock, Supplier } from "@/lib/types";
 import { ratakanStok } from "@/lib/types";
-import { angka, rupiah } from "@/lib/utils";
+import { angka, pesanError, rupiah } from "@/lib/utils";
 import { AlertTriangle, Coins, Package, Pencil, Plus, Tag, Trash2 } from "lucide-react";
 import Image from "next/image";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -42,6 +42,7 @@ export default function ProdukPage() {
   const [form, setForm] = useState({ ...kosong });
   const [katOpen, setKatOpen] = useState(false);
   const [katBaru, setKatBaru] = useState("");
+  const [saving, setSaving] = useState(false);
 
   const muat = useCallback(async () => {
     if (!orgId || !outletId) return;
@@ -55,7 +56,7 @@ export default function ProdukPage() {
       supabase.from("categories").select("*").eq("organization_id", orgId).order("name"),
       supabase.from("suppliers").select("*").eq("organization_id", orgId).order("name"),
     ]);
-    if (p.error) toast.error(p.error.message);
+    if (p.error) toast.error(pesanError(p.error.message));
     setProducts(ratakanStok(p.data ?? []));
     setCategories((c.data as Category[]) ?? []);
     setSuppliers((s.data as Supplier[]) ?? []);
@@ -67,7 +68,14 @@ export default function ProdukPage() {
   }, [muat]);
 
   const simpan = async () => {
+    if (saving) return;
     if (!form.name.trim()) return toast.error("Nama produk wajib diisi");
+    if (Number(form.price || 0) < 0 || Number(form.cost || 0) < 0)
+      return toast.error("Harga jual dan harga beli tidak boleh negatif");
+    if (Number(form.stock || 0) < 0 || Number(form.min_stock || 0) < 0)
+      return toast.error("Stok dan stok minimum tidak boleh negatif");
+    setSaving(true);
+    try {
     const payload = {
       sku: form.sku || null,
       name: form.name.trim(),
@@ -82,13 +90,13 @@ export default function ProdukPage() {
 
     if (editId) {
       const { error } = await supabase.from("products").update(payload).eq("id", editId);
-      if (error) return toast.error(error.message);
+      if (error) return toast.error(pesanError(error.message));
       const { error: e2 } = await supabase
         .from("outlet_stock")
         .update({ stock: Number(form.stock || 0), min_stock: Number(form.min_stock || 0), updated_at: new Date().toISOString() })
         .eq("product_id", editId)
         .eq("outlet_id", outletId!);
-      if (e2) return toast.error(e2.message);
+      if (e2) return toast.error(pesanError(e2.message));
       toast.success(`Produk diperbarui (stok untuk ${outlet?.name})`);
     } else {
       const { data, error } = await supabase
@@ -96,7 +104,7 @@ export default function ProdukPage() {
         .insert({ ...payload, organization_id: orgId })
         .select("id")
         .single();
-      if (error) return toast.error(error.message);
+      if (error) return toast.error(pesanError(error.message));
       // Produk baru langsung tersedia di semua outlet; stok awal hanya untuk outlet aktif.
       const baris = outlets.map((o) => ({
         organization_id: orgId,
@@ -106,7 +114,7 @@ export default function ProdukPage() {
         min_stock: Number(form.min_stock || 0),
       }));
       const { error: e2 } = await supabase.from("outlet_stock").insert(baris);
-      if (e2) return toast.error(e2.message);
+      if (e2) return toast.error(pesanError(e2.message));
       toast.success(`Produk ditambahkan ke ${outlets.length} outlet`);
     }
 
@@ -114,6 +122,9 @@ export default function ProdukPage() {
     setEditId(null);
     setForm({ ...kosong });
     muat();
+    } finally {
+      setSaving(false);
+    }
   };
 
   const hapus = async (p: ProductStock) => {
@@ -125,7 +136,7 @@ export default function ProdukPage() {
     });
     if (!ok) return;
     const { error } = await supabase.from("products").delete().eq("id", p.id);
-    if (error) return toast.error(error.message);
+    if (error) return toast.error(pesanError(error.message));
     toast.success("Produk dihapus");
     muat();
   };
@@ -133,7 +144,7 @@ export default function ProdukPage() {
   const tambahKategori = async () => {
     if (!katBaru.trim()) return;
     const { error } = await supabase.from("categories").insert({ name: katBaru.trim(), organization_id: orgId });
-    if (error) return toast.error(error.message);
+    if (error) return toast.error(pesanError(error.message));
     setKatBaru("");
     toast.success("Kategori ditambahkan");
     muat();
@@ -403,8 +414,8 @@ export default function ProdukPage() {
           <Button variant="outline" onClick={() => setOpen(false)}>
             Batal
           </Button>
-          <Button data-testid="save-product" onClick={simpan}>
-            Simpan
+          <Button data-testid="save-product" onClick={simpan} disabled={saving}>
+            {saving ? "Menyimpan..." : "Simpan"}
           </Button>
         </div>
       </Modal>
@@ -439,7 +450,7 @@ export default function ProdukPage() {
                   });
                   if (!ok) return;
                   const { error } = await supabase.from("categories").delete().eq("id", c.id);
-                  if (error) return toast.error(error.message);
+                  if (error) return toast.error(pesanError(error.message));
                   toast.success("Kategori dihapus");
                   muat();
                 }}

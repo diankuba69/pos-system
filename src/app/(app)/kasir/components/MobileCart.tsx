@@ -82,7 +82,8 @@ export function MobileCart({
               <button
                 data-testid="mobile-cart-close"
                 onClick={onClose}
-                className="absolute right-3 top-1.5 rounded-lg p-1.5 text-dim transition-colors duration-150 hover:bg-muted hover:text-ink"
+                aria-label="Tutup keranjang"
+                className="absolute right-2 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-lg text-dim transition-colors duration-150 hover:bg-muted hover:text-ink"
               >
                 <X className="h-4 w-4" />
               </button>

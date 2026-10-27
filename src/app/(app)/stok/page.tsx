@@ -9,7 +9,7 @@ import { Modal } from "@/components/ui/modal";
 import { createClient } from "@/lib/supabase/client";
 import type { ProductStock, StockMovement, Supplier } from "@/lib/types";
 import { ratakanStok } from "@/lib/types";
-import { angka, rupiah, tanggal } from "@/lib/utils";
+import { angka, pesanError, rupiah, tanggal } from "@/lib/utils";
 import { AlertTriangle, ArrowDownUp, Boxes, Coins, PackageCheck } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
@@ -28,6 +28,7 @@ export default function StokPage() {
   const [movements, setMovements] = useState<StockMovement[]>([]);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({ product_id: "", type: "masuk", qty: "", note: "", supplier_id: "" });
 
   const muat = useCallback(async () => {
@@ -47,7 +48,7 @@ export default function StokPage() {
         .order("created_at", { ascending: false })
         .limit(120),
     ]);
-    if (p.error) toast.error(p.error.message);
+    if (p.error) toast.error(pesanError(p.error.message));
     setProducts(ratakanStok(p.data ?? []));
     setSuppliers((s.data as Supplier[]) ?? []);
     setMovements((m.data as StockMovement[]) ?? []);
@@ -64,21 +65,27 @@ export default function StokPage() {
   const produkTerpilih = products.find((p) => p.id === form.product_id);
 
   const simpan = async () => {
+    if (saving) return;
     if (!form.product_id) return toast.error("Pilih produk");
-    if (!form.qty) return toast.error("Jumlah wajib diisi");
-    const { error } = await supabase.rpc("adjust_stock", {
-      p_outlet_id: outletId,
-      p_product_id: form.product_id,
-      p_type: form.type,
-      p_qty: Number(form.qty),
-      p_note: form.note || null,
-      p_supplier_id: form.supplier_id || null,
-    });
-    if (error) return toast.error(error.message);
-    toast.success(`Stok ${outlet?.name ?? ""} diperbarui`);
-    setOpen(false);
-    setForm({ product_id: "", type: "masuk", qty: "", note: "", supplier_id: "" });
-    muat();
+    if (!form.qty || Number(form.qty) <= 0) return toast.error("Jumlah harus lebih dari 0");
+    setSaving(true);
+    try {
+      const { error } = await supabase.rpc("adjust_stock", {
+        p_outlet_id: outletId,
+        p_product_id: form.product_id,
+        p_type: form.type,
+        p_qty: Number(form.qty),
+        p_note: form.note || null,
+        p_supplier_id: form.supplier_id || null,
+      });
+      if (error) return toast.error(pesanError(error.message));
+      toast.success(`Stok ${outlet?.name ?? ""} diperbarui`);
+      setOpen(false);
+      setForm({ product_id: "", type: "masuk", qty: "", note: "", supplier_id: "" });
+      muat();
+    } finally {
+      setSaving(false);
+    }
   };
 
   const columns: Column<StockMovement>[] = [
@@ -232,8 +239,8 @@ export default function StokPage() {
             <Button variant="outline" onClick={() => setOpen(false)}>
               Batal
             </Button>
-            <Button data-testid="save-stock" onClick={simpan}>
-              Simpan
+            <Button data-testid="save-stock" onClick={simpan} disabled={saving}>
+              {saving ? "Menyimpan..." : "Simpan"}
             </Button>
           </div>
         </div>

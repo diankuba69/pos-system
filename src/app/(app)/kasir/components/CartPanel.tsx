@@ -58,7 +58,7 @@ export function CartPanel({
           <button
             data-testid="hold-list"
             onClick={onOpenHolds}
-            className="relative inline-flex items-center gap-1 rounded-full border border-line px-2.5 py-1 text-[11px] font-semibold text-dim transition-colors duration-150 hover:text-ink"
+            className="relative inline-flex min-h-11 items-center gap-1 rounded-full border border-line px-2.5 py-1 text-[11px] font-semibold text-dim transition-colors duration-150 hover:text-ink"
           >
             <PauseCircle className="h-3.5 w-3.5" /> Tahan
             {holds.length > 0 && (
@@ -71,7 +71,7 @@ export function CartPanel({
             <button
               data-testid="clear-cart"
               onClick={onClearCart}
-              className="inline-flex items-center gap-1 text-[11px] font-semibold text-dim transition-colors duration-150 hover:text-bad"
+              className="inline-flex min-h-11 items-center gap-1 px-2 text-[11px] font-semibold text-dim transition-colors duration-150 hover:text-bad"
             >
               <X className="h-3 w-3" /> Kosongkan
             </button>
@@ -107,7 +107,8 @@ export function CartPanel({
                 <button
                   data-testid={`cart-remove-${l.product.id}`}
                   onClick={() => onRemoveLine(l.product.id)}
-                  className="shrink-0 rounded-md p-1 text-dim transition-colors duration-150 hover:bg-bad-soft hover:text-bad"
+                  aria-label="Hapus item"
+                  className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md text-dim transition-colors duration-150 hover:bg-bad-soft hover:text-bad"
                 >
                   <Trash2 className="h-3.5 w-3.5" />
                 </button>
@@ -117,7 +118,8 @@ export function CartPanel({
                   <button
                     data-testid={`cart-minus-${l.product.id}`}
                     onClick={() => onChangeQty(l.product.id, -1)}
-                    className="flex h-8 w-8 items-center justify-center rounded-lg border border-line text-dim transition-colors duration-150 hover:border-ink/40 hover:text-ink active:scale-95"
+                    aria-label="Kurangi jumlah"
+                    className="flex h-11 w-11 items-center justify-center rounded-lg border border-line text-dim transition-colors duration-150 hover:border-ink/40 hover:text-ink active:scale-95"
                   >
                     <Minus className="h-3.5 w-3.5" />
                   </button>
@@ -127,7 +129,8 @@ export function CartPanel({
                   <button
                     data-testid={`cart-plus-${l.product.id}`}
                     onClick={() => onChangeQty(l.product.id, 1)}
-                    className="flex h-8 w-8 items-center justify-center rounded-lg border border-line text-dim transition-colors duration-150 hover:border-ink/40 hover:text-ink active:scale-95"
+                    aria-label="Tambah jumlah"
+                    className="flex h-11 w-11 items-center justify-center rounded-lg border border-line text-dim transition-colors duration-150 hover:border-ink/40 hover:text-ink active:scale-95"
                   >
                     <Plus className="h-3.5 w-3.5" />
                   </button>
@@ -151,7 +154,7 @@ export function CartPanel({
             value={diskon}
             onChange={(e) => onChangeDiskon(e.target.value)}
             placeholder="0"
-            className="h-9 w-32 text-right font-mono tabular-nums"
+            className="w-32 text-right font-mono tabular-nums"
           />
         </div>
         <div className="space-y-1.5 font-mono text-[13px] tabular-nums">

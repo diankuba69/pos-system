@@ -64,14 +64,14 @@ export function ProductPanel({
             <button
               data-testid="show-shortcuts"
               onClick={onShowShortcuts}
-              className="inline-flex items-center gap-1.5 rounded-full border border-line px-2.5 py-1 text-[11px] font-semibold text-dim transition-colors duration-150 hover:text-ink"
+              className="inline-flex min-h-11 items-center gap-1.5 rounded-full border border-line px-2.5 py-1 text-[11px] font-semibold text-dim transition-colors duration-150 hover:text-ink"
             >
               <Keyboard className="h-3.5 w-3.5" /> Shortcut
             </button>
             <Link
               data-testid="link-tutup-kas"
               href="/kas"
-              className="text-[11px] font-semibold text-dim underline-offset-4 transition-colors duration-150 hover:text-ink hover:underline"
+              className="inline-flex min-h-11 items-center text-[11px] font-semibold text-dim underline-offset-4 transition-colors duration-150 hover:text-ink hover:underline"
             >
               Kelola / tutup kas
             </Link>
@@ -100,7 +100,7 @@ export function ProductPanel({
               <Kbd>F2</Kbd>
             </span>
           </div>
-          <Button data-testid="open-scanner" variant="outline" onClick={onOpenScanner}>
+          <Button data-testid="open-scanner" variant="outline" className="min-h-11" onClick={onOpenScanner}>
             <ScanLine className="h-4 w-4" /> <span className="hidden sm:inline">Pindai</span>
           </Button>
           <Segmented
@@ -122,7 +122,7 @@ export function ProductPanel({
               data-testid={`category-tab-${c.name}`}
               onClick={() => onChangeKategori(c.id)}
               className={cn(
-                "shrink-0 rounded-full border px-3.5 py-1.5 text-xs font-bold transition-[background-color,border-color,color] duration-150",
+                "inline-flex min-h-11 shrink-0 items-center rounded-full border px-3.5 py-1.5 text-xs font-bold transition-[background-color,border-color,color] duration-150",
                 kategori === c.id
                   ? "border-ink bg-ink text-bg"
                   : "border-line bg-surface text-dim hover:border-ink/40 hover:text-ink",

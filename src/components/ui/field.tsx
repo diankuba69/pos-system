@@ -119,7 +119,7 @@ export function Select({
                 setOpen(false);
               }}
               className={cn(
-                "flex w-full items-center justify-between gap-2 rounded-lg px-3 py-2 text-left text-sm transition-colors duration-100",
+                "flex min-h-11 w-full items-center justify-between gap-2 rounded-lg px-3 py-2 text-left text-sm transition-colors duration-100",
                 o.value === value ? "bg-brand-soft font-semibold text-brand" : "text-ink hover:bg-muted",
               )}
             >
@@ -196,7 +196,7 @@ export function Segmented<T extends string>({
           data-testid={testIdPrefix ? `${testIdPrefix}-${it.value}` : undefined}
           onClick={() => onChange(it.value)}
           className={cn(
-            "inline-flex min-h-11 items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors duration-150",
+            "inline-flex min-h-11 items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand",
             value === it.value ? "bg-surface text-ink shadow-sm" : "text-dim hover:text-ink",
           )}
         >

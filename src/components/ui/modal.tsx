@@ -54,7 +54,7 @@ export function Modal({
             onClick={onClose}
             data-testid="modal-close"
             aria-label="Tutup"
-            className="-mr-2.5 flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-dim transition-colors duration-150 hover:bg-muted hover:text-ink"
+            className="-mr-2.5 flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-dim transition-colors duration-150 hover:bg-muted hover:text-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-brand"
           >
             <X className="h-4 w-4" />
           </button>
@@ -113,7 +113,7 @@ export function Sheet({
             onClick={onClose}
             data-testid="sheet-close"
             aria-label="Tutup"
-            className="-mr-2.5 flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-dim transition-colors duration-150 hover:bg-muted hover:text-ink"
+            className="-mr-2.5 flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-dim transition-colors duration-150 hover:bg-muted hover:text-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-brand"
           >
             <X className="h-4 w-4" />
           </button>

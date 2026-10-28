@@ -122,7 +122,7 @@ export function ProductPanel({
               data-testid={`category-tab-${c.name}`}
               onClick={() => onChangeKategori(c.id)}
               className={cn(
-                "inline-flex min-h-11 shrink-0 items-center rounded-full border px-3.5 py-1.5 text-xs font-bold transition-[background-color,border-color,color] duration-150",
+                "inline-flex min-h-11 shrink-0 items-center rounded-full border px-3.5 py-1.5 text-xs font-bold transition-[background-color,border-color,color] duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:ring-offset-surface",
                 kategori === c.id
                   ? "border-ink bg-ink text-bg"
                   : "border-line bg-surface text-dim hover:border-ink/40 hover:text-ink",

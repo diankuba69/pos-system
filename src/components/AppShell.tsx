@@ -71,7 +71,7 @@ function TenantSwitcher() {
       <button
         data-testid="tenant-switcher"
         onClick={() => setOpen((o) => !o)}
-        className="flex max-w-[196px] items-center gap-2.5 rounded-xl border border-line bg-surface px-3 py-1.5 text-left transition-colors duration-150 hover:border-ink/30 min-[420px]:max-w-[260px]"
+        className="flex min-h-11 max-w-[196px] items-center gap-2.5 rounded-xl border border-line bg-surface px-3 py-1.5 text-left transition-colors duration-150 hover:border-ink/30 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:ring-offset-bg min-[420px]:max-w-[260px]"
       >
         <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-brand-soft text-brand">
           <Building2 className="h-3.5 w-3.5" />
@@ -100,7 +100,7 @@ function TenantSwitcher() {
                 setOpen(false);
               }}
               className={cn(
-                "flex w-full items-center justify-between gap-2 rounded-lg px-2.5 py-2 text-left text-[13px] transition-colors duration-100",
+                "flex min-h-11 w-full items-center justify-between gap-2 rounded-lg px-2.5 py-2 text-left text-[13px] transition-colors duration-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand",
                 m.organization_id === orgId ? "bg-brand-soft font-bold text-brand" : "text-ink hover:bg-muted",
               )}
             >
@@ -127,7 +127,7 @@ function TenantSwitcher() {
                 setOpen(false);
               }}
               className={cn(
-                "flex w-full items-center justify-between gap-2 rounded-lg px-2.5 py-2 text-left text-[13px] transition-colors duration-100",
+                "flex min-h-11 w-full items-center justify-between gap-2 rounded-lg px-2.5 py-2 text-left text-[13px] transition-colors duration-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand",
                 o.id === outletId ? "bg-brand-soft font-bold text-brand" : "text-ink hover:bg-muted",
               )}
             >
@@ -248,7 +248,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                       data-testid={`nav-${item.label.toLowerCase().split(" ")[0]}`}
                       title={collapsed ? item.label : undefined}
                       className={cn(
-                        "group relative mb-0.5 flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition-colors duration-150",
+                        "group relative mb-0.5 flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition-colors duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:ring-offset-surface",
                         on ? "bg-ink text-bg" : "text-dim hover:bg-muted hover:text-ink",
                         collapsed && "justify-center px-0",
                       )}
@@ -288,7 +288,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <Link
               href="/profil"
               data-testid="sidebar-profile-link"
-              className="mb-3 block rounded-xl border border-line bg-muted/60 px-3 py-2.5 transition-colors duration-150 hover:border-ink/30"
+              className="mb-3 block rounded-xl border border-line bg-muted/60 px-3 py-2.5 transition-colors duration-150 hover:border-ink/30 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:ring-offset-surface"
             >
               <p className="truncate text-sm font-bold text-ink">{profile?.full_name ?? "Pengguna"}</p>
               <p className="mt-0.5 text-[9px] font-bold uppercase tracking-[0.2em] text-brand">{role}</p>
@@ -301,7 +301,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 await signOut();
                 router.replace("/masuk");
               }}
-              className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-line px-3 py-2 text-xs font-semibold text-dim transition-colors duration-150 hover:border-bad/40 hover:bg-bad-soft hover:text-bad"
+              className="flex min-h-10 flex-1 items-center justify-center gap-2 rounded-xl border border-line px-3 py-2 text-xs font-semibold text-dim transition-colors duration-150 hover:border-bad/40 hover:bg-bad-soft hover:text-bad focus:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:ring-offset-surface"
             >
               <LogOut className="h-4 w-4" />
               {!collapsed && "Keluar"}
@@ -310,7 +310,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               onClick={toggleSidebar}
               data-testid="sidebar-toggle"
               aria-label="Lipat sidebar"
-              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-line text-dim transition-colors duration-150 hover:text-ink"
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-line text-dim transition-colors duration-150 hover:text-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:ring-offset-surface"
             >
               {collapsed ? <PanelsTopLeft className="h-4 w-4" /> : <ChevronsLeft className="h-4 w-4" />}
             </button>
@@ -333,7 +333,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <button
               data-testid="open-palette"
               onClick={() => setPalette(true)}
-              className="hidden items-center gap-2 rounded-xl border border-line bg-surface px-3 py-1.5 text-xs text-dim transition-colors duration-150 hover:border-ink/30 hover:text-ink sm:flex"
+              className="hidden min-h-11 items-center gap-2 rounded-xl border border-line bg-surface px-3 py-1.5 text-xs text-dim transition-colors duration-150 hover:border-ink/30 hover:text-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:ring-offset-bg sm:flex"
             >
               <Search className="h-3.5 w-3.5" />
               <span className="hidden lg:inline">Cari menu</span>
@@ -360,7 +360,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 href={item.href}
                 data-testid={`mobilenav-${item.label.toLowerCase().split(" ")[0]}`}
                 className={cn(
-                  "flex min-h-11 flex-1 flex-col items-center justify-center gap-0.5 rounded-lg py-1.5 text-[10px] font-semibold transition-colors duration-150",
+                  "flex min-h-11 flex-1 flex-col items-center justify-center gap-0.5 rounded-lg py-1.5 text-[10px] font-semibold transition-colors duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand",
                   on ? "text-ink" : "text-dim",
                 )}
               >
@@ -384,7 +384,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               aria-expanded={mobileMenu}
               onClick={() => setMobileMenu((v) => !v)}
               className={cn(
-                "flex min-h-11 flex-1 flex-col items-center justify-center gap-0.5 rounded-lg py-1.5 text-[10px] font-semibold transition-colors duration-150",
+                "flex min-h-11 flex-1 flex-col items-center justify-center gap-0.5 rounded-lg py-1.5 text-[10px] font-semibold transition-colors duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand",
                 overflowActive || mobileMenu ? "text-ink" : "text-dim",
               )}
             >
@@ -421,7 +421,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   data-testid="mobile-menu-close"
                   aria-label="Tutup menu"
                   onClick={() => setMobileMenu(false)}
-                  className="absolute right-0 top-0 flex h-11 w-11 items-center justify-center rounded-lg text-dim transition-colors duration-150 hover:bg-muted hover:text-ink"
+                  className="absolute right-0 top-0 flex h-11 w-11 items-center justify-center rounded-lg text-dim transition-colors duration-150 hover:bg-muted hover:text-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-brand"
                 >
                   <X className="h-4 w-4" />
                 </button>
@@ -439,7 +439,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                       data-testid={`mobilemenu-${item.label.toLowerCase().split(" ")[0]}`}
                       onClick={() => setMobileMenu(false)}
                       className={cn(
-                        "flex min-h-12 items-center gap-2.5 rounded-xl border px-3 text-sm font-semibold transition-colors duration-150",
+                        "flex min-h-12 items-center gap-2.5 rounded-xl border px-3 text-sm font-semibold transition-colors duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:ring-offset-surface",
                         on ? "border-ink bg-ink text-bg" : "border-line bg-surface text-ink hover:bg-muted",
                       )}
                     >
@@ -503,7 +503,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                       setPalette(false);
                     }}
                     className={cn(
-                      "flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-semibold transition-colors duration-150",
+                      "flex min-h-11 w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-semibold transition-colors duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand",
                       idx === 0 ? "bg-muted text-ink" : "text-dim hover:bg-muted hover:text-ink",
                     )}
                   >

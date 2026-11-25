@@ -3,11 +3,10 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   reactCompiler: true,
   images: {
-    // image_url produk boleh berupa tautan HTTPS apa pun (termasuk Supabase Storage).
-    remotePatterns: [{ protocol: "https", hostname: "**" }],
+    // Hanya host yang benar-benar dipakai untuk gambar produk (Supabase Storage).
+    remotePatterns: [{ protocol: "https", hostname: "*.supabase.co" }],
   },
-  allowedDevOrigins: [
-    "*.preview.emergentagent.com",
+  allowedDevOrigins: ["*.vercel.run", "*.preview.emergentagent.com",
     "*.preview.emergentcf.cloud",
     "*.emergentagent.com",
   ],

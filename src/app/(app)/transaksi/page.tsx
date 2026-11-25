@@ -9,7 +9,7 @@ import { Badge, PageHeader, StatCard } from "@/components/ui/misc";
 import { Sheet } from "@/components/ui/modal";
 import { createClient } from "@/lib/supabase/client";
 import type { Transaction } from "@/lib/types";
-import { angka, cn, pesanError, rupiah, tanggal, unduhCsv, waktu } from "@/lib/utils";
+import { angka, cn, pesanError, rupiah, tanggal, tundaMikro, unduhCsv, waktu } from "@/lib/utils";
 import { Download, Package, ReceiptText, Wallet } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
@@ -62,7 +62,7 @@ export default function TransaksiPage() {
   }, [supabase, dari, sampai, orgId, outletId, lingkup]);
 
   useEffect(() => {
-    muat();
+    tundaMikro(muat);
   }, [muat]);
 
   const omzet = rows.reduce((a, t) => a + Number(t.total), 0);

@@ -8,7 +8,7 @@ import { Badge, PageHeader, Panel, SectionTitle, Skeleton } from "@/components/u
 import { Modal } from "@/components/ui/modal";
 import { createClient } from "@/lib/supabase/client";
 import type { Organization, Outlet } from "@/lib/types";
-import { pesanError, rupiah } from "@/lib/utils";
+import { pesanError, rupiah, tundaMikro } from "@/lib/utils";
 import { AlertTriangle, Building2, Plus, RotateCcw, Save, Store, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
@@ -49,7 +49,7 @@ export default function PengaturanPage() {
   }, [supabase, orgId, outletId, pilih]);
 
   useEffect(() => {
-    muat();
+    tundaMikro(muat);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [orgId]);
 

@@ -12,7 +12,7 @@ import { Modal } from "@/components/ui/modal";
 import { createClient } from "@/lib/supabase/client";
 import type { Category, ProductStock, Shift, Transaction } from "@/lib/types";
 import { ratakanStok } from "@/lib/types";
-import { getDeviceId, pesanError, rupiah } from "@/lib/utils";
+import { getDeviceId, pesanError, rupiah, tundaMikro } from "@/lib/utils";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { CartPanel } from "./components/CartPanel";
@@ -82,7 +82,7 @@ export default function KasirPage() {
   }, [supabase, session, orgId, outletId]);
 
   useEffect(() => {
-    muat();
+    tundaMikro(muat);
   }, [muat]);
 
   const [bukaKasProses, setBukaKasProses] = useState(false);
@@ -179,9 +179,34 @@ export default function KasirPage() {
         .filter((l) => l.qty > 0),
     );
 
+  const KUNCI_HOLDS = `kasirpro:holds:${orgId ?? "anon"}:${outletId ?? "anon"}`;
+
+  // Holds dipersist ke localStorage agar tidak hilang saat kasir me-refresh halaman.
+  const perbaruiHolds = useCallback(
+    (ubah: (prev: Hold[]) => Hold[]) => {
+      setHolds((prev) => {
+        const berikut = ubah(prev);
+        try {
+          localStorage.setItem(KUNCI_HOLDS, JSON.stringify(berikut));
+        } catch {}
+        return berikut;
+      });
+    },
+    [KUNCI_HOLDS],
+  );
+
+  useEffect(() => {
+    tundaMikro(() => {
+      try {
+        const simpanan = localStorage.getItem(KUNCI_HOLDS);
+        if (simpanan) setHolds(JSON.parse(simpanan));
+      } catch {}
+    });
+  }, [KUNCI_HOLDS]);
+
   const tahan = () => {
     if (lines.length === 0) return toast.error("Keranjang masih kosong");
-    setHolds((prev) => [
+    perbaruiHolds((prev) => [
       { id: crypto.randomUUID(), lines, diskon, at: new Date().toISOString(), label: `${jumlahItem} item · ${rupiah(subtotal)}` },
       ...prev,
     ]);
@@ -193,12 +218,12 @@ export default function KasirPage() {
 
   const pulihkan = (h: Hold) => {
     if (lines.length > 0) {
-      setHolds((prev) => [
+      perbaruiHolds((prev) => [
         { id: crypto.randomUUID(), lines, diskon, at: new Date().toISOString(), label: `${jumlahItem} item · ${rupiah(subtotal)}` },
         ...prev.filter((x) => x.id !== h.id),
       ]);
     } else {
-      setHolds((prev) => prev.filter((x) => x.id !== h.id));
+      perbaruiHolds((prev) => prev.filter((x) => x.id !== h.id));
     }
     setLines(h.lines);
     setDiskon(h.diskon);
@@ -402,7 +427,7 @@ export default function KasirPage() {
         onClose={() => setHoldOpen(false)}
         holds={holds}
         onResume={pulihkan}
-        onDelete={(id) => setHolds((prev) => prev.filter((x) => x.id !== id))}
+        onDelete={(id) => perbaruiHolds((prev) => prev.filter((x) => x.id !== id))}
       />
 
       <ShortcutModal open={bantuanOpen} onClose={() => setBantuanOpen(false)} />

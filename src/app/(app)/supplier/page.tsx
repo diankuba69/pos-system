@@ -9,7 +9,7 @@ import { PageHeader } from "@/components/ui/misc";
 import { Modal } from "@/components/ui/modal";
 import { createClient } from "@/lib/supabase/client";
 import type { Supplier } from "@/lib/types";
-import { pesanError } from "@/lib/utils";
+import { pesanError, tundaMikro } from "@/lib/utils";
 import { Mail, Pencil, Phone, Plus, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
@@ -40,7 +40,7 @@ export default function SupplierPage() {
   }, [supabase, orgId]);
 
   useEffect(() => {
-    muat();
+    tundaMikro(muat);
   }, [muat]);
 
   const simpan = async () => {

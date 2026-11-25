@@ -60,7 +60,7 @@ export async function PATCH(request: Request) {
   if (!verified.user) return json("unauthorized", 401);
 
   // Dibatasi per akun admin yang terautentikasi (bukan IP, karena header IP klien bisa dipalsukan).
-  if (terlaluSering(`anggota:patch:${verified.user.id}`, 20, 60_000)) {
+  if (await terlaluSering(`anggota:patch:${verified.user.id}`, 20, 60_000)) {
     return json("rate_limited", 429);
   }
 
@@ -148,7 +148,7 @@ export async function DELETE(request: Request) {
   }
   if (!verified.user) return json("unauthorized", 401);
 
-  if (terlaluSering(`anggota:delete:${verified.user.id}`, 20, 60_000)) {
+  if (await terlaluSering(`anggota:delete:${verified.user.id}`, 20, 60_000)) {
     return json("rate_limited", 429);
   }
 
@@ -232,7 +232,7 @@ export async function POST(request: Request) {
   if (!verified.user) return json("unauthorized", 401);
 
   // Dibatasi per akun admin yang terautentikasi (bukan IP, karena header IP klien bisa dipalsukan).
-  if (terlaluSering(`anggota:post:${verified.user.id}`, 20, 60_000)) {
+  if (await terlaluSering(`anggota:post:${verified.user.id}`, 20, 60_000)) {
     return json("rate_limited", 429);
   }
 

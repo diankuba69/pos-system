@@ -18,7 +18,20 @@ const RUTE_TERLINDUNGI = [
 export async function middleware(request: NextRequest) {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
-  if (!url || !key) return NextResponse.next({ request });
+  const path = request.nextUrl.pathname;
+  const butuhSesi = RUTE_TERLINDUNGI.some((r) => path === r || path.startsWith(`${r}/`));
+
+  // Fail-closed: tanpa konfigurasi Supabase, rute terlindungi dikunci ke halaman masuk.
+  if (!url || !key) {
+    console.error("Middleware: NEXT_PUBLIC_SUPABASE_URL / NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY tidak terbaca.");
+    if (butuhSesi) {
+      const ke = request.nextUrl.clone();
+      ke.pathname = "/masuk";
+      ke.search = "";
+      return NextResponse.redirect(ke);
+    }
+    return NextResponse.next({ request });
+  }
 
   let response = NextResponse.next({ request });
   const supabase = createServerClient(url, key, {
@@ -36,9 +49,6 @@ export async function middleware(request: NextRequest) {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-
-  const path = request.nextUrl.pathname;
-  const butuhSesi = RUTE_TERLINDUNGI.some((r) => path === r || path.startsWith(`${r}/`));
 
   if (!user && butuhSesi) {
     const ke = request.nextUrl.clone();

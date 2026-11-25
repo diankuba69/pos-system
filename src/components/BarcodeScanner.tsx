@@ -23,7 +23,7 @@ export function BarcodeScanner({
 
   useEffect(() => {
     if (!open) return;
-    setError("");
+    queueMicrotask(() => setError(""));
     const reader = new BrowserMultiFormatReader();
     let controls: { stop: () => void } | null = null;
     let stopped = false;

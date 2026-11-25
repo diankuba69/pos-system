@@ -4,7 +4,7 @@ import { useAuth } from "@/components/AuthProvider";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { Kbd } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/client";
-import { cn } from "@/lib/utils";
+import { cn, tundaMikro } from "@/lib/utils";
 import {
   BarChart3,
   Boxes,
@@ -160,7 +160,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (!outletId || !(isAdmin || isManager)) return;
-    supabase.rpc("count_low_stock", { p_outlet_id: outletId }).then(({ data }) => setLowStock(data ?? 0));
+    supabase.rpc("count_low_stock", { p_outlet_id: outletId }).then(({ data }) =>
+      tundaMikro(() => setLowStock(data ?? 0)),
+    );
   }, [supabase, outletId, isAdmin, isManager]);
 
   const items = NAV.filter(
@@ -198,6 +200,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   const active = items.find((i) => navAktif(pathname, i.href));
   const hasil = items.filter((i) => i.label.toLowerCase().includes(q.trim().toLowerCase()));
+  const [aktifIdx, setAktifIdx] = useState(0);
+  const daftarRef = useRef<HTMLDivElement>(null);
+  useEffect(() => tundaMikro(() => setAktifIdx(0)), [q, palette]);
   const groups = [...new Set(items.map((i) => i.group))];
   const orgName = memberships.find((m) => m.organization_id === orgId)?.organizations?.name;
 
@@ -480,8 +485,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
                 onKeyDown={(e) => {
-                  if (e.key === "Enter" && hasil[0]) {
-                    router.push(hasil[0].href);
+                  if (e.key === "ArrowDown") {
+                    e.preventDefault();
+                    setAktifIdx((i) => Math.min(i + 1, hasil.length - 1));
+                  } else if (e.key === "ArrowUp") {
+                    e.preventDefault();
+                    setAktifIdx((i) => Math.max(i - 1, 0));
+                  } else if (e.key === "Enter" && hasil[aktifIdx]) {
+                    router.push(hasil[aktifIdx].href);
                     setPalette(false);
                   }
                 }}
@@ -490,7 +501,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               />
               <Kbd>Esc</Kbd>
             </div>
-            <div className="max-h-72 overflow-y-auto p-2">
+            <div className="max-h-72 overflow-y-auto p-2" ref={daftarRef}>
               {hasil.length === 0 && <p className="px-3 py-6 text-center text-sm text-dim">Tidak ditemukan.</p>}
               {hasil.map((i, idx) => {
                 const Icon = i.icon;
@@ -498,13 +509,17 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   <button
                     key={i.href}
                     data-testid={`palette-item-${i.label.toLowerCase().split(" ")[0]}`}
+                    onMouseEnter={() => setAktifIdx(idx)}
                     onClick={() => {
                       router.push(i.href);
                       setPalette(false);
                     }}
+                    ref={(el) => {
+                      if (el && idx === aktifIdx) el.scrollIntoView({ block: "nearest" });
+                    }}
                     className={cn(
                       "flex min-h-11 w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-semibold transition-colors duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand",
-                      idx === 0 ? "bg-muted text-ink" : "text-dim hover:bg-muted hover:text-ink",
+                      idx === aktifIdx ? "bg-muted text-ink" : "text-dim hover:bg-muted hover:text-ink",
                     )}
                   >
                     <Icon className="h-4 w-4" />

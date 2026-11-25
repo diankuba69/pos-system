@@ -49,7 +49,7 @@ export async function POST(request: Request) {
   if (!verified.user) return json("unauthorized", 401);
 
   // Aksi destruktif: dibatasi lebih ketat daripada operasi anggota biasa.
-  if (terlaluSering(`reset-pabrik:${verified.user.id}`, 5, 5 * 60_000)) {
+  if (await terlaluSering(`reset-pabrik:${verified.user.id}`, 5, 5 * 60_000)) {
     return json("rate_limited", 429);
   }
 

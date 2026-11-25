@@ -7,7 +7,7 @@ import { Empty, PageHeader, Panel, SectionTitle, Skeleton, StatCard } from "@/co
 import { createClient } from "@/lib/supabase/client";
 import type { ProductStock, Transaction } from "@/lib/types";
 import { ratakanStok } from "@/lib/types";
-import { angka, delta, namaHari, pesanError, rupiah, tanggalPendek, unduhCsv } from "@/lib/utils";
+import { angka, delta, namaHari, pesanError, rupiah, tanggalPendek, tundaMikro, unduhCsv } from "@/lib/utils";
 import dynamic from "next/dynamic";
 
 const Charts = dynamic(() => import("./charts"), {
@@ -96,12 +96,13 @@ export default function LaporanPage() {
   }, [supabase, n, orgId, outletId, lingkup]);
 
   useEffect(() => {
-    muat();
+    tundaMikro(muat);
   }, [muat]);
 
-  const hariIni = new Date().toDateString();
+  const tanggalAcuan = txs[0] ? new Date(txs[0].created_at) : new Date();
+  const hariIni = tanggalAcuan.toDateString();
   const txHariIni = txs.filter((t) => new Date(t.created_at).toDateString() === hariIni);
-  const kemarinKey = new Date(Date.now() - 86400000).toDateString();
+  const kemarinKey = new Date(tanggalAcuan.getTime() - 86400000).toDateString();
   const txKemarin = txs.filter((t) => new Date(t.created_at).toDateString() === kemarinKey);
 
   const omzetHariIni = txHariIni.reduce((a, t) => a + Number(t.total), 0);

@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Field, Input, PasswordInput } from "@/components/ui/field";
 import { Badge, PageHeader, Panel, SectionTitle } from "@/components/ui/misc";
 import { createClient } from "@/lib/supabase/client";
-import { pesanError, tanggal } from "@/lib/utils";
+import { pesanError, tanggal, tundaMikro } from "@/lib/utils";
 import { AlertTriangle, Building2, CalendarDays, KeyRound, Store, UserCog } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
@@ -21,7 +21,7 @@ export default function ProfilPage() {
   const [gantiSandi, setGantiSandi] = useState(false);
 
   useEffect(() => {
-    setNama(profile?.full_name ?? "");
+    tundaMikro(() => setNama(profile?.full_name ?? ""));
   }, [profile?.full_name]);
 
   const email = profile?.email ?? session?.user?.email ?? "-";
@@ -98,6 +98,7 @@ export default function ProfilPage() {
             <Field label="Nama lengkap">
               <Input
                 data-testid="profil-nama"
+                autoComplete="name"
                 value={nama}
                 onChange={(e) => setNama(e.target.value)}
                 placeholder="Nama Anda"
@@ -140,6 +141,7 @@ export default function ProfilPage() {
             <Field label="Kata sandi saat ini">
               <PasswordInput
                 data-testid="sandi-lama"
+                autoComplete="current-password"
                 value={lama}
                 onChange={(e) => setLama(e.target.value)}
                 placeholder="••••••••"
@@ -148,6 +150,7 @@ export default function ProfilPage() {
             <Field label="Kata sandi baru (min. 8 karakter)">
               <PasswordInput
                 data-testid="sandi-baru"
+                autoComplete="new-password"
                 value={baru}
                 onChange={(e) => setBaru(e.target.value)}
                 placeholder="••••••••"
@@ -170,6 +173,7 @@ export default function ProfilPage() {
             <Field label="Ulangi kata sandi baru">
               <PasswordInput
                 data-testid="sandi-ulang"
+                autoComplete="new-password"
                 value={ulang}
                 onChange={(e) => setUlang(e.target.value)}
                 placeholder="••••••••"

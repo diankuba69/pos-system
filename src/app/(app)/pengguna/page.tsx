@@ -9,7 +9,7 @@ import { Badge, PageHeader, Panel, StatCard } from "@/components/ui/misc";
 import { Modal } from "@/components/ui/modal";
 import { createClient } from "@/lib/supabase/client";
 import type { Membership } from "@/lib/types";
-import { angka, pesanError, tanggal } from "@/lib/utils";
+import { angka, pesanError, tanggal, tundaMikro } from "@/lib/utils";
 import { Check, Copy, Info, KeyRound, Pencil, RefreshCw, ShieldCheck, Shuffle, Smartphone, Trash2, UserPlus, Users } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
@@ -55,7 +55,7 @@ export default function PenggunaPage() {
   }, [supabase, orgId]);
 
   useEffect(() => {
-    muat();
+    tundaMikro(muat);
   }, [muat]);
 
   const token = async () => {
@@ -441,6 +441,7 @@ export default function PenggunaPage() {
           <Field label="Nama lengkap">
             <Input
               data-testid="member-name"
+              autoComplete="name"
               value={akun.full_name}
               onChange={(e) => setAkun({ ...akun, full_name: e.target.value })}
               placeholder="Nama anggota"
@@ -450,6 +451,7 @@ export default function PenggunaPage() {
             <Input
               data-testid="member-email"
               type="email"
+              autoComplete="email"
               value={akun.email}
               onChange={(e) => setAkun({ ...akun, email: e.target.value })}
               placeholder="nama@toko.com"
@@ -459,6 +461,8 @@ export default function PenggunaPage() {
             <div className="flex gap-2">
               <Input
                 data-testid="member-password"
+                type="password"
+                autoComplete="new-password"
                 value={akun.password}
                 onChange={(e) => setAkun({ ...akun, password: e.target.value })}
                 placeholder="mis. Kasir2026!"
@@ -529,6 +533,8 @@ export default function PenggunaPage() {
             <div className="flex gap-2">
               <Input
                 data-testid="reset-password-input"
+                type="password"
+                autoComplete="new-password"
                 value={sandiBaru}
                 onFocus={(e) => e.currentTarget.select()}
                 onChange={(e) => setSandiBaru(e.target.value)}
@@ -572,6 +578,7 @@ export default function PenggunaPage() {
           <Field label="Nama lengkap">
             <Input
               data-testid="edit-member-name"
+              autoComplete="name"
               value={editForm.full_name}
               onChange={(e) => setEditForm({ ...editForm, full_name: e.target.value })}
               placeholder="Nama anggota"
@@ -581,6 +588,7 @@ export default function PenggunaPage() {
             <Input
               data-testid="edit-member-email"
               type="email"
+              autoComplete="email"
               value={editForm.email}
               onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
               placeholder="nama@toko.com"

@@ -9,7 +9,7 @@ import { Modal } from "@/components/ui/modal";
 import { NumberTicker } from "@/components/ui/number-ticker";
 import { createClient } from "@/lib/supabase/client";
 import type { Shift } from "@/lib/types";
-import { cn, getDeviceId, pesanError, rupiah, tanggal, waktu } from "@/lib/utils";
+import { cn, getDeviceId, pesanError, rupiah, tundaMikro, tanggal, waktu } from "@/lib/utils";
 import { DoorOpen, LockKeyhole, Wallet } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
@@ -80,7 +80,7 @@ export default function KasPage() {
   }, [supabase, session, isAdmin, isManager, orgId, outletId]);
 
   useEffect(() => {
-    muat();
+    tundaMikro(muat);
   }, [muat]);
 
   const buka = async () => {

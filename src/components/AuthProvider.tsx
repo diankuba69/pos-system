@@ -2,7 +2,7 @@
 
 import { createClient } from "@/lib/supabase/client";
 import type { Membership, Outlet, Profile, Role } from "@/lib/types";
-import { getDeviceId } from "@/lib/utils";
+import { getDeviceId, tundaMikro } from "@/lib/utils";
 import type { Session } from "@supabase/supabase-js";
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
@@ -69,8 +69,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // Outlet mengikuti organisasi aktif
   useEffect(() => {
     if (!orgId) {
-      setOutlets([]);
-      setOutletId(null);
+      tundaMikro(() => {
+        setOutlets([]);
+        setOutletId(null);
+      });
       return;
     }
     let aktif = true;
@@ -99,7 +101,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     let active = true;
     supabase.auth.getSession().then(async ({ data }) => {
       if (!active) return;
-      setSession(data.session ?? null);
+      void Promise.resolve().then(() => {
+        setSession(data.session ?? null);
+      });
       if (data.session?.user) await muatTenant(data.session.user.id);
       else setSiapTenant(true);
       setLoading(false);

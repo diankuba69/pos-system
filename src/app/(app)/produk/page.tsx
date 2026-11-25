@@ -10,7 +10,7 @@ import { Modal } from "@/components/ui/modal";
 import { createClient } from "@/lib/supabase/client";
 import type { Category, ProductStock, Supplier } from "@/lib/types";
 import { ratakanStok } from "@/lib/types";
-import { angka, pesanError, rupiah } from "@/lib/utils";
+import { angka, pesanError, rupiah, tundaMikro } from "@/lib/utils";
 import { AlertTriangle, Coins, Package, Pencil, Plus, Tag, Trash2 } from "lucide-react";
 import Image from "next/image";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -64,7 +64,7 @@ export default function ProdukPage() {
   }, [supabase, orgId, outletId]);
 
   useEffect(() => {
-    muat();
+    tundaMikro(muat);
   }, [muat]);
 
   const simpan = async () => {

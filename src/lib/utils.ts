@@ -5,6 +5,12 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+/** Jalankan fungsi sebagai microtask: dipakai di efek agar setState tidak dipanggil
+ *  sinkron di body efek (react-hooks/set-state-in-effect). */
+export const tundaMikro = (fn: () => void) => {
+  void Promise.resolve().then(fn);
+};
+
 export const rupiah = (n: number | string | null | undefined) =>
   new Intl.NumberFormat("id-ID", {
     style: "currency",
@@ -15,7 +21,7 @@ export const rupiah = (n: number | string | null | undefined) =>
 export const rupiahRingkas = (n: number | string | null | undefined) => {
   const v = Number(n ?? 0);
   if (Math.abs(v) >= 1_000_000_000) return `${(v / 1_000_000_000).toFixed(1)}M`;
-  if (Math.abs(v) >= 1_000_000) return `${(v / 1_000_000).toFixed(1)}jt`;
+  if (Math.abs(v) >= 1_000_000) return `${(v / 1_000_000).toFixed(1)}M`;
   if (Math.abs(v) >= 1_000) return `${Math.round(v / 1_000)}rb`;
   return String(v);
 };
@@ -46,7 +52,12 @@ export const delta = (kini: number, lalu: number) => {
 };
 
 export function unduhCsv(namaFile: string, baris: (string | number)[][]) {
-  const isi = baris.map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(";")).join("\n");
+  // Netralkan formula injection: sel yang diawali = + - @ diprefiks ' agar tidak dieksekusi Excel.
+  const aman = (c: string | number) => {
+    const s = String(c);
+    return /^[=+\-@\t\r]/.test(s) ? `'${s}` : s;
+  };
+  const isi = baris.map((r) => r.map((c) => `"${aman(c).replace(/"/g, '""')}"`).join(";")).join("\n");
   const url = URL.createObjectURL(new Blob([`\uFEFF${isi}`], { type: "text/csv;charset=utf-8;" }));
   const a = document.createElement("a");
   a.href = url;

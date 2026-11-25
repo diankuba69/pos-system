@@ -9,7 +9,7 @@ import { Modal } from "@/components/ui/modal";
 import { createClient } from "@/lib/supabase/client";
 import type { ProductStock, StockMovement, Supplier } from "@/lib/types";
 import { ratakanStok } from "@/lib/types";
-import { angka, pesanError, rupiah, tanggal } from "@/lib/utils";
+import { angka, pesanError, rupiah, tanggal, tundaMikro } from "@/lib/utils";
 import { AlertTriangle, ArrowDownUp, Boxes, Coins, PackageCheck } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
@@ -56,7 +56,7 @@ export default function StokPage() {
   }, [supabase, orgId, outletId]);
 
   useEffect(() => {
-    muat();
+    tundaMikro(muat);
   }, [muat]);
 
   const menipis = products.filter((p) => p.stock <= p.stock_min);
